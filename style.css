@@ -1,110 +1,56 @@
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f2f7fb;
-  margin: 0;
-  padding: 0;
+  font-family: Arial, sans-serif;
   text-align: center;
-  color: #333;
+  background: #f0f6fc;
+  margin: 0;
+  padding: 20px;
 }
 
-.container {
-  max-width: 600px;
-  margin: 40px auto;
+.card-container {
+  background: white;
+  max-width: 500px;
+  margin: auto;
   padding: 30px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-h1 {
-  color: #0074d9;
-  margin-bottom: 20px;
-}
-
-#startMenu label,
-#startMenu select,
-#startMenu input,
-#startMenu button {
-  display: block;
-  margin: 10px auto;
-  font-size: 1rem;
-}
-
-#startMenu select,
-#startMenu input {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
-
-#startGameBtn,
-#sendBidBtn {
-  background-color: #0074d9;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-#startGameBtn:hover,
-#sendBidBtn:hover {
-  background-color: #005fa3;
+.card-hand, .played-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 15px 0;
 }
 
 .card {
-  display: inline-block;
-  padding: 12px;
-  margin: 6px;
-  border-radius: 6px;
-  border: 2px solid #0074d9;
-  background-color: #f9f9f9;
-  font-size: 1.2rem;
-  cursor: pointer;
-  width: 48px;
-  height: 64px;
-  vertical-align: top;
+  padding: 12px 18px;
+  font-size: 24px;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.card.red {
+.red {
   color: red;
 }
 
-.card.black {
+.black {
   color: black;
 }
 
-.card.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-#bidSection {
-  margin-top: 20px;
-}
-
-.bid-button {
-  display: inline-block;
+button {
+  padding: 8px 16px;
   margin: 4px;
-  padding: 6px 12px;
-  font-size: 0.9rem;
-  border: 1px solid #0074d9;
-  background-color: white;
-  color: #0074d9;
+  font-size: 16px;
+  border: 2px solid #007bff;
   border-radius: 6px;
+  background: white;
+  color: #007bff;
   cursor: pointer;
 }
 
-.bid-button:hover {
-  background-color: #0074d9;
+button:hover {
+  background: #007bff;
   color: white;
-}
-
-#dealerInfo,
-#playInfo,
-#playedCards {
-  margin-top: 20px;
-  font-size: 1rem;
 }
