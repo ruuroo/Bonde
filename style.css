@@ -1,115 +1,110 @@
 body {
-    font-family: Arial, sans-serif;
-    background: #f8f9fa;
-    margin: 0;
-    padding: 0;
-    text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f2f7fb;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  color: #333;
 }
 
 .container {
-    max-width: 500px;
-    margin: auto;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    margin-top: 40px;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
-    color: #0074D9;
-    margin-bottom: 20px;
+  color: #0074d9;
+  margin-bottom: 20px;
 }
 
-label, select, button {
-    display: block;
-    margin: 10px auto;
-    font-size: 16px;
+#startMenu label,
+#startMenu select,
+#startMenu input,
+#startMenu button {
+  display: block;
+  margin: 10px auto;
+  font-size: 1rem;
 }
 
-select {
-    padding: 5px;
+#startMenu select,
+#startMenu input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-button {
-    background-color: #0074D9;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
+#startGameBtn,
+#sendBidBtn {
+  background-color: #0074d9;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
-button:hover {
-    background-color: #005fa3;
-}
-
-.hand-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin: 20px 0;
-    gap: 10px;
+#startGameBtn:hover,
+#sendBidBtn:hover {
+  background-color: #005fa3;
 }
 
 .card {
-    padding: 10px;
-    font-size: 24px;
-    border: 2px solid #0074D9;
-    border-radius: 6px;
-    width: 50px;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f0f8ff;
-    cursor: pointer;
-    transition: transform 0.2s ease;
+  display: inline-block;
+  padding: 12px;
+  margin: 6px;
+  border-radius: 6px;
+  border: 2px solid #0074d9;
+  background-color: #f9f9f9;
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 48px;
+  height: 64px;
+  vertical-align: top;
 }
 
-.card:hover {
-    transform: scale(1.1);
-    background-color: #e6f2ff;
+.card.red {
+  color: red;
 }
 
-.red {
-    color: red;
+.card.black {
+  color: black;
 }
 
-.black {
-    color: black;
+.card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
-#bid-section {
-    margin-top: 20px;
-}
-
-#bid-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
+#bidSection {
+  margin-top: 20px;
 }
 
 .bid-button {
-    background-color: #ccc;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 14px;
-    cursor: pointer;
-    min-width: 30px;
+  display: inline-block;
+  margin: 4px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #0074d9;
+  background-color: white;
+  color: #0074d9;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .bid-button:hover {
-    background-color: #bbb;
+  background-color: #0074d9;
+  color: white;
 }
 
-#dealer-info {
-    font-weight: bold;
-    background: #eef4ff;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 15px 0;
+#dealerInfo,
+#playInfo,
+#playedCards {
+  margin-top: 20px;
+  font-size: 1rem;
 }
