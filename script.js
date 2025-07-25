@@ -1,3 +1,8 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const startBtn = document.getElementById("startGameBtn");
+  startBtn.addEventListener("click", startGame);
+});
+
 let gameState = {
     numPlayers: 4,
     difficulty: "medium",
