@@ -1,21 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const startBtn = document.getElementById("startGameBtn");
-  startBtn.addEventListener("click", startGame);
+  document.getElementById("startGameBtn").addEventListener("click", startGame);
 });
 
 let gameState = {
   numPlayers: 4,
   difficulty: "medium",
-  cardsPerPlayer: 10,
+  cardsPerPlayer: 5,
   playerHand: [],
-  trumpSuit: "",
-  currentDealer: 0,
-  bids: [],
-  round: 0,
-  tableCards: [],
-  playerNames: ["Du", "Spiller 2", "Spiller 3", "Spiller 4"],
-  playedCards: [],
-  currentPlayer: 0,
+  dealer: 0,
+  trump: "",
 };
 
 const suits = ["♠", "♣", "♥", "♦"];
@@ -38,13 +31,29 @@ function generateDeck() {
   return deck;
 }
 
-function dealHands() {
-  const deck = generateDeck();
-  shuffle(deck);
-  gameState.playerHand = deck.slice(0, gameState.cardsPerPlayer);
-  gameState.trumpSuit = deck[deck.length - 1].slice(-1);
-  gameState.playedCards = [];
-  gameState.bids = new Array(gameState.numPlayers).fill(null);
+function assignTrump(deck) {
+  const trumpCard = deck.pop();
+  gameState.trump = trumpCard.slice(-1);
+  document.getElementById("trump-info").textContent = "Trumf: " + trumpCard;
+}
+
+function dealHands(deck) {
+  const hands = [];
+  for (let i = 0; i < gameState.numPlayers; i++) {
+    hands.push(deck.splice(0, gameState.cardsPerPlayer));
+  }
+  gameState.playerHand = hands[0].sort(compareCards);
+}
+
+function compareCards(a, b) {
+  const suitOrder = { "♠": 1, "♣": 2, "♥": 3, "♦": 4 };
+  const valOrder = values;
+  const [valA, suitA] = [a.slice(0, -1), a.slice(-1)];
+  const [valB, suitB] = [b.slice(0, -1), b.slice(-1)];
+  if (suitOrder[suitA] !== suitOrder[suitB]) {
+    return suitOrder[suitA] - suitOrder[suitB];
+  }
+  return valOrder.indexOf(valA) - valOrder.indexOf(valB);
 }
 
 function getSuitClass(card) {
@@ -55,74 +64,58 @@ function getSuitClass(card) {
 function showHand() {
   const container = document.getElementById("hand-container");
   container.innerHTML = "";
-  gameState.playerHand.forEach((card, index) => {
+  gameState.playerHand.forEach(card => {
     const div = document.createElement("div");
     div.className = "card " + getSuitClass(card);
     div.textContent = card;
-    div.onclick = () => playCard(index);
     container.appendChild(div);
   });
 }
 
 function showDealer() {
-  const dealerName = gameState.playerNames[gameState.currentDealer];
-  document.getElementById("dealer-info").textContent = "Dealer: " + dealerName;
-}
-
-function showTrump() {
-  document.getElementById("trump-info").textContent = "Trumf: " + gameState.trumpSuit;
+  const name = gameState.dealer === 0 ? "Du" : "Spiller " + (gameState.dealer + 1);
+  document.getElementById("dealer-info").textContent = "Dealer: " + name;
 }
 
 function showBidButtons() {
   const container = document.getElementById("bid-buttons");
-  container.innerHTML = "<p>Meld stikk:</p>";
+  container.innerHTML = "";
   for (let i = 0; i <= gameState.cardsPerPlayer; i++) {
     const btn = document.createElement("button");
     btn.className = "bid-button";
     btn.textContent = i;
-    btn.onclick = () => handleBid(i);
+    btn.onclick = () => {
+      container.innerHTML = `Du meldte ${i} stikk. (Tips: Du burde vurdert ${suggestBid()})`;
+    };
     container.appendChild(btn);
   }
 }
 
-function handleBid(bid) {
-  gameState.bids[0] = bid;
-  document.getElementById("bid-buttons").innerHTML = "<p>Du meldte: " + bid + " stikk</p>";
-  setTimeout(() => {
-    showHand();
-    showTable();
-  }, 1000);
-}
-
-function showTable() {
-  const table = document.getElementById("table");
-  table.innerHTML = "";
-  gameState.playedCards.forEach((play, index) => {
-    const div = document.createElement("div");
-    div.className = "card " + getSuitClass(play);
-    div.textContent = play;
-    table.appendChild(div);
+function suggestBid() {
+  // Enkel heuristikk: vurder høye kort
+  const strong = gameState.playerHand.filter(card => {
+    const val = card.slice(0, -1);
+    return ["A", "K", "Q", "J", "10"].includes(val);
   });
-}
-
-function playCard(index) {
-  const card = gameState.playerHand.splice(index, 1)[0];
-  gameState.playedCards.push(card);
-  showHand();
-  showTable();
+  return Math.max(1, Math.floor(strong.length * 0.8));
 }
 
 function startGame() {
+  // Hent innstillinger
   gameState.numPlayers = parseInt(document.getElementById("numPlayers").value);
+  gameState.cardsPerPlayer = parseInt(document.getElementById("startCards").value);
   gameState.difficulty = document.getElementById("difficulty").value;
-  gameState.cardsPerPlayer = parseInt(document.getElementById("numCards").value);
 
-  document.getElementById("setup").style.display = "none";
-  document.getElementById("game").style.display = "block";
+  // Skjul meny og vis spill
+  document.getElementById("startMenu").style.display = "none";
+  document.getElementById("gameArea").style.display = "block";
 
-  dealHands();
+  // Start ny runde
+  const deck = generateDeck();
+  shuffle(deck);
+  assignTrump(deck);
+  dealHands(deck);
   showDealer();
-  showTrump();
   showHand();
   showBidButtons();
 }
