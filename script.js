@@ -6,12 +6,16 @@ document.addEventListener("DOMContentLoaded", () => {
 let gameState = {
   numPlayers: 4,
   difficulty: "medium",
-  cardsPerPlayer: 5,
+  cardsPerPlayer: 10,
   playerHand: [],
+  trumpSuit: "",
   currentDealer: 0,
-  trumpSuit: null,
-  bid: null,
-  playedCard: null
+  bids: [],
+  round: 0,
+  tableCards: [],
+  playerNames: ["Du", "Spiller 2", "Spiller 3", "Spiller 4"],
+  playedCards: [],
+  currentPlayer: 0,
 };
 
 const suits = ["♠", "♣", "♥", "♦"];
@@ -38,7 +42,9 @@ function dealHands() {
   const deck = generateDeck();
   shuffle(deck);
   gameState.playerHand = deck.slice(0, gameState.cardsPerPlayer);
-  gameState.trumpSuit = suits[Math.floor(Math.random() * suits.length)];
+  gameState.trumpSuit = deck[deck.length - 1].slice(-1);
+  gameState.playedCards = [];
+  gameState.bids = new Array(gameState.numPlayers).fill(null);
 }
 
 function getSuitClass(card) {
@@ -46,17 +52,8 @@ function getSuitClass(card) {
   return suit === "♥" || suit === "♦" ? "red" : "black";
 }
 
-function showDealer() {
-  const dealerName = gameState.currentDealer === 0 ? "Du" : "Spiller " + (gameState.currentDealer + 1);
-  document.getElementById("dealerInfo").textContent = "Dealer: " + dealerName;
-}
-
-function showTrump() {
-  document.getElementById("playInfo").textContent = "Trumf: " + gameState.trumpSuit;
-}
-
 function showHand() {
-  const container = document.getElementById("handContainer");
+  const container = document.getElementById("hand-container");
   container.innerHTML = "";
   gameState.playerHand.forEach((card, index) => {
     const div = document.createElement("div");
@@ -67,44 +64,61 @@ function showHand() {
   });
 }
 
+function showDealer() {
+  const dealerName = gameState.playerNames[gameState.currentDealer];
+  document.getElementById("dealer-info").textContent = "Dealer: " + dealerName;
+}
+
+function showTrump() {
+  document.getElementById("trump-info").textContent = "Trumf: " + gameState.trumpSuit;
+}
+
 function showBidButtons() {
-  const container = document.getElementById("bidSection");
+  const container = document.getElementById("bid-buttons");
   container.innerHTML = "<p>Meld stikk:</p>";
   for (let i = 0; i <= gameState.cardsPerPlayer; i++) {
     const btn = document.createElement("button");
     btn.className = "bid-button";
     btn.textContent = i;
-    btn.onclick = () => makeBid(i);
+    btn.onclick = () => handleBid(i);
     container.appendChild(btn);
   }
 }
 
-function makeBid(bidValue) {
-  gameState.bid = bidValue;
-  document.getElementById("bidSection").innerHTML = `<p>Du meldte ${bidValue} stikk.</p>`;
+function handleBid(bid) {
+  gameState.bids[0] = bid;
+  document.getElementById("bid-buttons").innerHTML = "<p>Du meldte: " + bid + " stikk</p>";
+  setTimeout(() => {
+    showHand();
+    showTable();
+  }, 1000);
+}
+
+function showTable() {
+  const table = document.getElementById("table");
+  table.innerHTML = "";
+  gameState.playedCards.forEach((play, index) => {
+    const div = document.createElement("div");
+    div.className = "card " + getSuitClass(play);
+    div.textContent = play;
+    table.appendChild(div);
+  });
 }
 
 function playCard(index) {
   const card = gameState.playerHand.splice(index, 1)[0];
-  gameState.playedCard = card;
-
-  const playedContainer = document.getElementById("playedCards");
-  playedContainer.innerHTML = `<p>Du spilte: <span class="${getSuitClass(card)} card">${card}</span></p>`;
-
-  showHand(); // Oppdater hånden etter kortet er spilt
+  gameState.playedCards.push(card);
+  showHand();
+  showTable();
 }
 
 function startGame() {
-  const players = document.getElementById("numPlayers").value;
-  const difficulty = document.getElementById("difficulty").value;
-  const cards = document.getElementById("startCards").value;
+  gameState.numPlayers = parseInt(document.getElementById("numPlayers").value);
+  gameState.difficulty = document.getElementById("difficulty").value;
+  gameState.cardsPerPlayer = parseInt(document.getElementById("numCards").value);
 
-  gameState.numPlayers = parseInt(players);
-  gameState.difficulty = difficulty;
-  gameState.cardsPerPlayer = parseInt(cards);
-
-  document.getElementById("startMenu").style.display = "none";
-  document.getElementById("gameArea").style.display = "block";
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("game").style.display = "block";
 
   dealHands();
   showDealer();
