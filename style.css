@@ -1,12 +1,72 @@
 body {
-  background-color: #222;
-  color: #fff;
-  font-family: sans-serif;
-  text-align: center;
   margin: 0;
   padding: 0;
+  background: #f5f7fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
 }
 
-#game {
-  padding: 20px;
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+h1 {
+  color: #0077cc;
+}
+
+#status {
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+#hand, #play-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.card-button {
+  font-size: 1.5rem;
+  padding: 10px 15px;
+  border: 2px solid #0077cc;
+  border-radius: 5px;
+  background-color: #eef6fc;
+  cursor: pointer;
+}
+
+.card-button:hover {
+  background-color: #d9ecfa;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background-color: #0077cc;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #005fa3;
+}
+
+.hidden {
+  display: none;
+}
+
+#round-info {
+  margin: 1rem 0;
+  background-color: #f0f8ff;
+  padding: 0.5rem;
+  border-radius: 5px;
 }
