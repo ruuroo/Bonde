@@ -10,7 +10,6 @@
   <div class="container">
     <h1>Bondebridge</h1>
 
-    <!-- Startmeny -->
     <div id="startMenu">
       <label for="difficulty">Vanskelighetsgrad:</label>
       <select id="difficulty">
@@ -20,7 +19,7 @@
       </select>
 
       <label for="numPlayers">Antall spillere:</label>
-      <input type="number" id="numPlayers" min="2" max="6" value="2"/>
+      <input type="number" id="numPlayers" min="2" max="6" value="4"/>
 
       <label for="startCards">Startkort per spiller:</label>
       <input type="number" id="startCards" min="1" max="10" value="5"/>
@@ -28,13 +27,12 @@
       <button id="startGameBtn">Start spill</button>
     </div>
 
-    <!-- Spilleområde -->
     <div id="gameArea" style="display:none;">
-      <div id="dealerInfo"></div>       <!-- Hvem som delte ut -->
-      <div id="playInfo"></div>         <!-- Trumfvisning -->
-      <div id="handContainer"></div>    <!-- Kortene dine -->
-      <div id="bidSection"></div>       <!-- Knappene for å melde -->
-      <div id="playedCards"></div>      <!-- Kort du har spilt -->
+      <div id="dealer-info"></div>
+      <div id="trump-info"></div>
+      <div id="bid-buttons"></div>
+      <div id="hand-container" class="hand"></div>
+      <div id="playedCards"></div>
     </div>
   </div>
 
