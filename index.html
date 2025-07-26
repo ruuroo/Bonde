@@ -4,37 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Bondebridge</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <div id="setup" class="card-container">
+  <div class="container">
     <h1>Bondebridge</h1>
-    <label for="difficulty">Vanskelighetsgrad:</label>
-    <select id="difficulty">
-      <option value="easy">Lett</option>
-      <option value="medium" selected>Middels</option>
-      <option value="hard">Vanskelig</option>
-    </select>
-    <label for="numPlayers">Antall spillere:</label>
-    <input id="numPlayers" type="number" min="2" max="6" value="4" />
-    <label for="numCards">Startkort per spiller:</label>
-    <input id="numCards" type="number" min="1" max="10" value="5" />
-    <button id="startGameBtn">Start spill</button>
-  </div>
 
-  <div id="game" class="card-container" style="display: none;">
-    <h1>Bondebridge</h1>
-    <div id="dealer-info"></div>
-    <div id="trump-info"></div>
-    <div id="bid-info"></div>
-    <div id="hand-container" class="card-hand"></div>
-    <div id="bid-section">
-      <div>Meld stikk:</div>
-      <div id="bid-buttons"></div>
+    <div id="startMenu">
+      <label for="difficulty">Vanskelighetsgrad:</label>
+      <select id="difficulty">
+        <option value="easy">Lett</option>
+        <option value="medium" selected>Middels</option>
+        <option value="hard">Vanskelig</option>
+      </select>
+
+      <label for="numPlayers">Antall spillere:</label>
+      <input type="number" id="numPlayers" min="2" max="6" value="4"/>
+
+      <label for="startCards">Startkort per spiller:</label>
+      <input type="number" id="startCards" min="1" max="10" value="5"/>
+
+      <button id="startGameBtn">Start spill</button>
     </div>
-    <div id="played-cards" class="played-cards"></div>
+
+    <div id="gameArea" style="display:none;">
+      <div id="dealerInfo"></div>
+      <div id="trumpInfo"></div>
+      <div id="handContainer"></div>
+      <div id="bidSection"></div>
+      <div id="playInfo"></div>
+      <div id="playedCards"></div>
+      <div id="analysisSection"></div>
+    </div>
   </div>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
