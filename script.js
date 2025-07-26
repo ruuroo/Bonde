@@ -1,27 +1,74 @@
+// script.js
+import { analyzePlay } from "./analysis.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("startGameBtn").addEventListener("click", startGame);
 });
 
-const suits = ["♠", "♣", "♥", "♦"];
+const suits = ["♠", "♥", "♦", "♣"];
 const values = ["7", "8", "9", "10", "J", "Q", "K", "A"];
+const rankOrder = { "7": 0, "8": 1, "9": 2, "10": 3, "J": 4, "Q": 5, "K": 6, "A": 7 };
 
 let gameState = {
-  numPlayers: 4,
-  difficulty: "medium",
+  numPlayers: 2,
   cardsPerPlayer: 5,
-  playerHand: [],
-  otherHands: [],
-  dealer: 0,
+  difficulty: "medium",
   trump: null,
-  round: 0,
-  trickLeader: 0,
-  playerBid: 0,
+  hands: [],
+  bids: [],
+  tricksWon: [],
+  playerNames: [],
+  playedCards: [],
   currentTrick: [],
-  trickHistory: [],
-  playerTricksWon: 0,
-  turn: 0,
-  phase: "bidding"
+  currentPlayer: 0,
+  dealer: 0,
+  leadSuit: null,
+  round: 1,
 };
+
+function startGame() {
+  gameState.numPlayers = parseInt(document.getElementById("numPlayers").value);
+  gameState.cardsPerPlayer = parseInt(document.getElementById("startCards").value);
+  gameState.difficulty = document.getElementById("difficulty").value;
+  gameState.trump = suits[Math.floor(Math.random() * 4)];
+  gameState.hands = dealHands(gameState.numPlayers, gameState.cardsPerPlayer);
+  gameState.bids = new Array(gameState.numPlayers).fill(null);
+  gameState.tricksWon = new Array(gameState.numPlayers).fill(0);
+  gameState.playedCards = [];
+  gameState.playerNames = Array.from({ length: gameState.numPlayers }, (_, i) => (i === 0 ? "Du" : "Spiller " + i));
+  gameState.currentTrick = [];
+  gameState.currentPlayer = (gameState.dealer + 1) % gameState.numPlayers;
+  gameState.leadSuit = null;
+
+  document.getElementById("startMenu").style.display = "none";
+  document.getElementById("gameArea").style.display = "block";
+
+  showTrump();
+  showDealer();
+  showBidding();
+}
+
+function dealHands(numPlayers, numCards) {
+  let deck = [];
+  for (let suit of suits) {
+    for (let value of values) {
+      deck.push(value + suit);
+    }
+  }
+  shuffle(deck);
+  let hands = [];
+  for (let i = 0; i < numPlayers; i++) {
+    hands.push(deck.splice(0, numCards).sort(compareCards));
+  }
+  return hands;
+}
+
+function compareCards(a, b) {
+  const [vA, sA] = [a.slice(0, -1), a.slice(-1)];
+  const [vB, sB] = [b.slice(0, -1), b.slice(-1)];
+  if (sA !== sB) return suits.indexOf(sA) - suits.indexOf(sB);
+  return rankOrder[vA] - rankOrder[vB];
+}
 
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -30,86 +77,23 @@ function shuffle(array) {
   }
 }
 
-function generateDeck() {
-  const deck = [];
-  for (let suit of suits) {
-    for (let value of values) {
-      deck.push(value + suit);
-    }
-  }
-  return deck;
+function showTrump() {
+  document.getElementById("playInfo").textContent = `Trumf: ${gameState.trump}`;
 }
 
-function startGame() {
-  gameState.numPlayers = parseInt(document.getElementById("numPlayers").value);
-  gameState.difficulty = document.getElementById("difficulty").value;
-  gameState.cardsPerPlayer = parseInt(document.getElementById("numCards").value);
-  gameState.dealer = Math.floor(Math.random() * gameState.numPlayers);
-  gameState.turn = (gameState.dealer + 1) % gameState.numPlayers;
-  gameState.trickLeader = gameState.turn;
-  gameState.round = 0;
-  gameState.playerTricksWon = 0;
-  gameState.trickHistory = [];
-
-  const deck = generateDeck();
-  shuffle(deck);
-
-  gameState.playerHand = deck.slice(0, gameState.cardsPerPlayer);
-  gameState.otherHands = [];
-  for (let i = 1; i < gameState.numPlayers; i++) {
-    const start = i * gameState.cardsPerPlayer;
-    const end = start + gameState.cardsPerPlayer;
-    gameState.otherHands.push(deck.slice(start, end));
-  }
-
-  gameState.trump = deck[deck.length - 1].slice(-1);
-
-  document.getElementById("setup").style.display = "none";
-  document.getElementById("game").style.display = "block";
-  showStatus();
-  showHand();
-  showBidButtons();
+function showDealer() {
+  const dealer = gameState.dealer;
+  document.getElementById("dealerInfo").textContent = `Dealer: ${gameState.playerNames[dealer]}`;
 }
 
-function showStatus() {
-  const dealerName = gameState.dealer === 0 ? "Du" : "Spiller " + (gameState.dealer + 1);
-  const trumpSymbol = gameState.trump;
-  let status = `Dealer: ${dealerName}<br>Trumf: ${trumpSymbol}`;
-  if (gameState.phase === "bidding" && gameState.playerBid > 0) {
-    status += `<br>Du meldte ${gameState.playerBid} stikk.`;
-  }
-  document.getElementById("status").innerHTML = status;
-}
-
-function showHand() {
-  const container = document.getElementById("hand-container");
-  container.innerHTML = "";
-  gameState.playerHand.forEach((card, index) => {
-    const div = document.createElement("div");
-    div.className = "card " + getSuitClass(card);
-    div.textContent = card;
-    div.onclick = () => playCard(index);
-    container.appendChild(div);
-  });
-}
-
-function getSuitClass(card) {
-  const suit = card.slice(-1);
-  return suit === "♥" || suit === "♦" ? "red" : "black";
-}
-
-function showBidButtons() {
-  const container = document.getElementById("bid-buttons");
-  container.innerHTML = "";
+function showBidding() {
+  const container = document.getElementById("bidSection");
+  container.innerHTML = "<p>Meld hvor mange stikk du tror du får:</p>";
   for (let i = 0; i <= gameState.cardsPerPlayer; i++) {
     const btn = document.createElement("button");
-    btn.className = "bid-button";
     btn.textContent = i;
     btn.onclick = () => {
-      gameState.playerBid = i;
-      gameState.phase = "playing";
-      showStatus();
-      container.innerHTML = "";
+      gameState.bids[0] = i;
       startTrick();
     };
     container.appendChild(btn);
@@ -117,96 +101,112 @@ function showBidButtons() {
 }
 
 function startTrick() {
-  gameState.currentTrick = [];
-  gameState.turn = gameState.trickLeader;
-  document.getElementById("trick").innerHTML = "Spilte kort:";
-  if (gameState.turn === 0) {
-    showHand();
+  document.getElementById("bidSection").innerHTML = "";
+  showHand();
+  showPlayedCards();
+  if (gameState.currentPlayer === 0) {
+    promptPlayerMove();
   } else {
-    aiPlay();
+    setTimeout(() => {
+      aiPlayCard(gameState.currentPlayer);
+    }, 800);
   }
 }
 
-function playCard(index) {
-  if (gameState.turn !== 0 || gameState.phase !== "playing") return;
-
-  const playedCard = gameState.playerHand.splice(index, 1)[0];
-  gameState.currentTrick.push({ player: 0, card: playedCard });
-  updateTrickDisplay();
-  nextTurn();
-}
-
-function aiPlay() {
-  const handIndex = gameState.turn - 1;
-  const hand = gameState.otherHands[handIndex];
-  const playedCard = hand.pop();
-  gameState.currentTrick.push({ player: gameState.turn, card: playedCard });
-  updateTrickDisplay();
-  nextTurn();
-}
-
-function updateTrickDisplay() {
-  const div = document.getElementById("trick");
-  div.innerHTML = "Spilte kort:<br>";
-  gameState.currentTrick.forEach(entry => {
-    const name = entry.player === 0 ? "Du" : "Spiller " + (entry.player + 1);
-    div.innerHTML += `${name}: ${entry.card} <br>`;
+function showHand() {
+  const container = document.getElementById("handContainer");
+  container.innerHTML = "";
+  gameState.hands[0].forEach((card, index) => {
+    const div = document.createElement("button");
+    div.className = "card " + (["♥", "♦"].includes(card.slice(-1)) ? "red" : "black");
+    div.textContent = card;
+    div.onclick = () => playerPlaysCard(index);
+    container.appendChild(div);
   });
 }
 
-function nextTurn() {
-  gameState.turn = (gameState.turn + 1) % gameState.numPlayers;
-  if (gameState.currentTrick.length < gameState.numPlayers) {
-    if (gameState.turn === 0) {
-      showHand();
-    } else {
-      setTimeout(aiPlay, 500);
-    }
+function promptPlayerMove() {
+  document.getElementById("playInfo").textContent = "Din tur – velg et kort å spille.";
+}
+
+function playerPlaysCard(index) {
+  const card = gameState.hands[0][index];
+  if (gameState.leadSuit && card.slice(-1) !== gameState.leadSuit) {
+    const hasLead = gameState.hands[0].some(c => c.slice(-1) === gameState.leadSuit);
+    if (hasLead) return; // Må følge farge
+  }
+
+  gameState.hands[0].splice(index, 1);
+  gameState.currentTrick.push([0, card]);
+  gameState.playedCards.push({ player: 0, card });
+  if (!gameState.leadSuit) gameState.leadSuit = card.slice(-1);
+  nextPlayer();
+}
+
+function aiPlayCard(playerIndex) {
+  const hand = gameState.hands[playerIndex];
+  const valid = gameState.leadSuit ? hand.filter(c => c.slice(-1) === gameState.leadSuit) : hand;
+  const play = valid.length > 0 ? valid[0] : hand[0];
+  hand.splice(hand.indexOf(play), 1);
+  gameState.currentTrick.push([playerIndex, play]);
+  gameState.playedCards.push({ player: playerIndex, card: play });
+  if (!gameState.leadSuit) gameState.leadSuit = play.slice(-1);
+  nextPlayer();
+}
+
+function nextPlayer() {
+  gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.numPlayers;
+  if (gameState.currentTrick.length === gameState.numPlayers) {
+    finishTrick();
+  } else if (gameState.currentPlayer === 0) {
+    showHand();
+    promptPlayerMove();
   } else {
-    endTrick();
+    setTimeout(() => aiPlayCard(gameState.currentPlayer), 800);
   }
 }
 
-function endTrick() {
-  const winner = determineTrickWinner(gameState.currentTrick);
-  if (winner === 0) {
-    gameState.playerTricksWon++;
-  }
-  gameState.trickLeader = winner;
-  gameState.round++;
-  gameState.trickHistory.push(gameState.currentTrick);
+function finishTrick() {
+  const winner = determineTrickWinner();
+  gameState.tricksWon[winner]++;
+  gameState.currentPlayer = winner;
+  gameState.leadSuit = null;
 
-  if (gameState.round >= gameState.cardsPerPlayer) {
-    endRound();
+  const feedback = analyzePlay(gameState.currentTrick, gameState.trump, gameState.leadSuit);
+  document.getElementById("playInfo").textContent = feedback;
+
+  gameState.currentTrick = [];
+  showPlayedCards();
+
+  if (gameState.hands[0].length === 0) {
+    showResult();
   } else {
-    setTimeout(startTrick, 1000);
+    setTimeout(startTrick, 2000);
   }
 }
 
-function determineTrickWinner(trick) {
-  const leadSuit = trick[0].card.slice(-1);
-  let bestCard = trick[0];
-  for (let entry of trick.slice(1)) {
-    const suit = entry.card.slice(-1);
-    const value = entry.card.slice(0, -1);
-    const bestValue = bestCard.card.slice(0, -1);
-    if (
-      (suit === gameState.trump && bestCard.card.slice(-1) !== gameState.trump) ||
-      (suit === bestCard.card.slice(-1) &&
-        values.indexOf(value) > values.indexOf(bestValue))
-    ) {
-      bestCard = entry;
+function determineTrickWinner() {
+  let bestValue = -1;
+  let winner = null;
+  for (let [player, card] of gameState.currentTrick) {
+    let value = rankOrder[card.slice(0, -1)];
+    const suit = card.slice(-1);
+    if (suit === gameState.trump) value += 100;
+    else if (suit === gameState.leadSuit) value += 50;
+    if (value > bestValue) {
+      bestValue = value;
+      winner = player;
     }
   }
-  return bestCard.player;
+  return winner;
 }
 
-function endRound() {
-  const feedback = document.createElement("div");
-  feedback.className = "feedback";
-  feedback.innerHTML = `Du meldte ${gameState.playerBid} stikk og tok ${gameState.playerTricksWon}.`;
-  if (gameState.playerBid !== gameState.playerTricksWon) {
-    feedback.innerHTML += ` (Tips: Du burde vurdert ${gameState.playerTricksWon})`;
-  }
-  document.getElementById("game").appendChild(feedback);
+function showPlayedCards() {
+  const div = document.getElementById("playedCards");
+  div.innerHTML = "<h4>Spilte kort</h4>";
+  gameState.currentTrick.forEach(([player, card]) => {
+    const p = document.createElement("p");
+    p.textContent = `${gameState.playerNames[player]}: ${card}`;
+    div.appendChild(p);
+  });
 }
