@@ -32,8 +32,8 @@
 
   <main id="game">
     <section id="statusBar">
-      <div id="roundInfo"></div>
       <div id="trumpInfo"></div>
+      <div id="roundInfo"></div>
       <div id="dealerInfo"></div>
       <div id="starterInfo"></div>
     </section>
@@ -57,12 +57,14 @@
         </label>
         <button id="placeBidBtn">Meld</button>
       </div>
-      <div id="playControls" class="hidden">
-        <button id="hintBtn">Hint (anbefalt kort)</button>
+      <div id="playControls" class="hidden playControlsRow">
+        <button id="hintBtn">Hint</button>
+        <label class="slowToggle"><input type="checkbox" id="slowMode" checked> Sakte modus</label>
       </div>
       <div id="hintArea"></div>
     </section>
 
+    <!-- Sperreregel -->
     <dialog id="adjustDialog">
       <form method="dialog">
         <h3>Sperreregel</h3>
@@ -76,6 +78,7 @@
       </form>
     </dialog>
 
+    <!-- Etter stikk: du klikker videre -->
     <dialog id="trickReport">
       <form method="dialog">
         <h3>Stikk ferdig</h3>
@@ -86,6 +89,7 @@
       </form>
     </dialog>
 
+    <!-- Etter runde -->
     <dialog id="roundReport">
       <form method="dialog">
         <h3>Runde-rapport</h3>
@@ -96,6 +100,7 @@
       </form>
     </dialog>
 
+    <!-- Tavle -->
     <dialog id="historyDialog">
       <form method="dialog">
         <h3>Tavle – runde for runde</h3>
