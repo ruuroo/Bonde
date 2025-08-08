@@ -9,19 +9,22 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 
 main { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; padding: 16px; }
 #statusBar { grid-column: 1 / -1; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; background: #121821; padding: 8px 12px; border: 1px solid #223; border-radius: 8px; }
+
+/* Paneler */
 #table { display: grid; grid-template-rows: auto auto 1fr; gap: 16px; }
 #bidsPanel, #scoresPanel, #trickArea { background: #121821; padding: 12px; border: 1px solid #223; border-radius: 8px; }
-#bidsPanel { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+#bidsPanel { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
 .playerBox { border: 1px solid #334; padding: 8px; border-radius: 6px; }
 .playerBox.dealer { outline: 2px solid #6aa9ff; }
 .playerBox.starter { box-shadow: 0 0 0 2px #77d977 inset; }
-.playerName { font-weight: 600; }
+.playerName { font-weight: 700; font-size: 15px; }
 .badge { display: inline-block; font-size: 12px; padding: 2px 6px; border-radius: 999px; border: 1px solid #445; margin-left: 6px; }
 .badge.dealer { border-color: #6aa9ff; }
 .badge.tricks { border-color: #77d977; }
 .badge.bid { border-color: #e0ad4a; }
 .badge.score { border-color: #c68bf2; }
 
+/* Kort / stikk */
 #trickCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 6px; }
 .card { display: inline-flex; justify-content: center; align-items: center; width: 88px; height: 120px; border: 1px solid #445; border-radius: 8px; background: #0f141b; }
 .cardBtn { margin: 4px; }
@@ -29,21 +32,23 @@ main { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; padding: 16p
 .card .rank { font-size: 20px; font-weight: 700; margin-left: 6px; }
 .red { color: #ff7d7d; }
 
+/* Din hånd */
 #humanPanel { background: #121821; padding: 12px; border: 1px solid #223; border-radius: 8px; }
 #hand { display: flex; flex-wrap: wrap; gap: 6px; }
+.playControlsRow { display:flex; gap:12px; align-items:center; }
+.slowToggle { font-size: 13px; opacity: 0.9; }
 .hidden { display: none; }
 
+/* Dialoger */
 dialog { border: 1px solid #334; border-radius: 8px; background: #0f141b; color: #e9f0f7; padding: 16px; }
 dialog::backdrop { background: rgba(0,0,0,.6); }
-
-/* Trumf-badge */
-#trumpInfo { font-size: 18px; font-weight: 700; }
-.trumpBadge { display:inline-block; padding:4px 10px; border:2px solid #e0ad4a; border-radius:999px; background:#181f29; }
-.trumpRed { color:#ff7d7d; border-color:#ff7d7d; }
-
-/* Stikk-dialog */
 .trickList { display:grid; gap:6px; margin-top:8px; }
 .trickList .cardLine { display:flex; gap:8px; align-items:center; }
+
+/* Trumf-badge – stor og tydelig */
+#trumpInfo { font-size: 22px; font-weight: 900; letter-spacing: .2px; }
+.trumpBadge { display:inline-block; padding:6px 14px; border:3px solid #e0ad4a; border-radius:999px; background:#0e161f; box-shadow:0 0 0 2px #0e161f, 0 0 0 4px #3a2a06 inset; }
+.trumpRed { color:#ff8181; border-color:#ff8181; box-shadow:0 0 0 2px #0e161f, 0 0 0 4px #471b1b inset; }
 
 /* Tavle */
 .tableWrap { max-height: 60vh; overflow:auto; border:1px solid #223; border-radius:8px; }
