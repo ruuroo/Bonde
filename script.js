@@ -1,15 +1,18 @@
-/* Bondebridge – motor + UI
-   – Regler iht. spes
+/* Bondebridge – motor + UI (oppdatert)
+   – Fase-styring: bidding / playing / reporting (hindrer "lock")
    – Dialog etter hvert stikk (klikk Neste stikk)
    – Tydelig trumf-badge
    – Tilfeldige AI-navn
-   – Hint skjult til trykk + etter-trekk-råd
-   – Tavle-knapp: viser runde for runde (bud, stikk, poeng)
+   – Hint kun på knapp + forklaring via explainSuggest()
+   – Ettertrekk-kommentar
+   – Slow mode (forsink AI-spill)
+   – Tavle (bud, stikk, poeng per runde + totalscore)
 */
 
 const SUITS = ['♠','♥','♦','♣'];
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 const RANK_IDX = new Map(RANKS.map((r,i)=>[r,i]));
+const AI_NAMES = ['Kari','Ola','Maja','Lars','Nora','Hassan','Eva','Jonas','Ingrid','Sindre','Mikkel','Aisha','Mona','Erik','Anja','Sofie','Tobias','Iben'];
 
 const qs = sel => document.querySelector(sel);
 const qsa = sel => [...document.querySelectorAll(sel)];
@@ -38,6 +41,7 @@ const el = {
   playControls: qs('#playControls'),
   hintBtn: qs('#hintBtn'),
   hintArea: qs('#hintArea'),
+  slowMode: qs('#slowMode'),
 
   adjustDialog: qs('#adjustDialog'),
   adjustInput: qs('#adjustInput'),
@@ -49,8 +53,6 @@ const el = {
   historyDialog: qs('#historyDialog'),
   historyBody: qs('#historyBody'),
 };
-
-const AI_NAMES = ['Kari','Ola','Maja','Lars','Nora','Hassan','Eva','Jonas','Ingrid','Sindre','Mikkel','Aisha','Mona','Erik','Anja','Sofie','Tobias','Iben'];
 
 const state = {
   players: [],
@@ -69,7 +71,8 @@ const state = {
   leadSuit: null,
   turn: 0,
   discarded: [],
-  history: [], // {roundNo, cards, trump, dealerName, starterName, rows:[{name,bid,tricks,points}]}
+  history: [],
+  phase: 'bidding', // 'bidding' | 'playing' | 'reporting'
 };
 
 function init(){
@@ -84,12 +87,16 @@ function init(){
   newSeries();
 }
 
+/* ---------- Setup / deck ---------- */
+
 function onInputsChanged(){
   state.playerCount = parseInt(el.playerCount.value,10);
   const maxStart = Math.floor(52 / state.playerCount);
   el.startCards.max = String(maxStart);
   if(parseInt(el.startCards.value,10) > maxStart) el.startCards.value = String(maxStart);
 }
+
+function pickNames(n){ const arr=[...AI_NAMES]; shuffle(arr); return arr.slice(0,n); }
 
 function newSeries(){
   const n = parseInt(el.playerCount.value,10);
@@ -102,6 +109,7 @@ function newSeries(){
   state.startCards = startCards;
   state.difficulty = el.difficulty.value;
   state.history = [];
+  state.phase = 'bidding';
 
   state.players = [];
   const aiPicked = pickNames(n-1);
@@ -129,10 +137,9 @@ function newSeries(){
   startNextRound();
 }
 
-function pickNames(n){ const arr=[...AI_NAMES]; shuffle(arr); return arr.slice(0,n); }
-
 function startNextRound(){
   if(state.roundIndex >= state.roundSeq.length){ showFinal(); return; }
+  state.phase = 'bidding';
 
   state.currentRoundCards = state.roundSeq[state.roundIndex];
   state.roundIndex++;
@@ -167,6 +174,8 @@ function dealCards(k){
   for(const p of state.players){ p.hand = sortHand(p.hand); }
 }
 
+/* ---------- Bidding ---------- */
+
 function beginBidding(){
   state.turn = (state.dealer + 1) % state.playerCount;
   if(state.turn===0) showHumanBid(); else aiBidTurn();
@@ -179,7 +188,7 @@ function showHumanBid(){
   el.playControls.classList.add('hidden');
   el.hintArea.textContent = '';
   el.humanBid.min = 0; el.humanBid.max = state.currentRoundCards;
-  el.humanBid.value = 0; // hint skjult; ingen auto-estimat
+  el.humanBid.value = 0;
 }
 
 function onPlaceBid(){
@@ -195,10 +204,11 @@ function aiBidTurn(){
   let bid = Math.max(0, Math.min(state.currentRoundCards, Math.round(est)));
   if(state.difficulty==='easy') bid = Math.max(0, Math.min(state.currentRoundCards, Math.round(est*0.9)));
   if(state.difficulty==='hard') bid = Math.max(0, Math.min(state.currentRoundCards, Math.round(est)));
-  setTimeout(()=>placeBid(p.index, bid), 400);
+  setTimeout(()=>placeBid(p.index, bid), el.slowMode?.checked?700:300);
 }
 
 function placeBid(playerIndex, value){
+  if(state.phase!=='bidding') return;
   state.players[playerIndex].bid = value;
 
   if(nextUnbid()!==null){
@@ -260,14 +270,19 @@ function afterBidding(){
     state.startingPlayer = order.find(i=>tied.includes(i));
   }
   state.turn = state.startingPlayer;
+  state.phase = 'playing';
   renderAll();
   beginTrickOrNext();
 }
 
+/* ---------- Playing ---------- */
+
 function beginTrickOrNext(){
+  if(state.phase!=='playing') return;
   const totalTricks = state.currentRoundCards;
   const wonTricks = state.players.reduce((s,p)=>s+p.tricks,0);
   if(wonTricks === totalTricks){
+    state.phase = 'reporting';
     scoreRoundAndReport();
     return;
   }
@@ -279,21 +294,21 @@ function nextTurnPlay(){
   renderAll();
   const p = state.players[state.turn];
   if(p.isHuman){ showHumanPlay(); }
-  else setTimeout(()=>aiPlayCard(p), 450);
+  else setTimeout(()=>aiPlayCard(p), el.slowMode?.checked?800:350);
 }
 
 function showHumanPlay(){
   el.bidControls.classList.add('hidden');
   el.playControls.classList.remove('hidden');
-  el.hintArea.textContent = ''; // skjult til du trykker
   renderHand(true);
 }
 
 function onHint(){
   const me = state.players[0];
-  const card = suggest_play(extractPublicState(), me.hand);
-  if(!card){ el.hintArea.textContent = 'Ingen hint tilgjengelig.'; return; }
-  el.hintArea.textContent = `Anbefalt: ${card.suit}${card.rank}`;
+  const candidate = suggest_play(extractPublicState(), me.hand);
+  if(!candidate){ el.hintArea.textContent = 'Ingen hint tilgjengelig.'; return; }
+  const why = explainSuggest(extractPublicState(), me.hand, candidate);
+  el.hintArea.textContent = why;
 }
 
 function aiPlayCard(p){
@@ -304,6 +319,8 @@ function aiPlayCard(p){
 }
 
 function playCard(playerIndex, card){
+  if(state.phase!=='playing') return;
+
   const p = state.players[playerIndex];
   const idx = p.hand.findIndex(c=>c.suit===card.suit && c.rank===card.rank);
   if(idx<0) return;
@@ -339,6 +356,8 @@ function playCard(playerIndex, card){
     nextTurnPlay();
   }
 }
+
+/* ---------- Render ---------- */
 
 function renderAll(){
   el.roundInfo.textContent = `Runde ${state.roundIndex}/${state.roundSeq.length} — ${state.currentRoundCards} kort`;
@@ -393,16 +412,19 @@ function renderHand(enablePlay){
       const recStr = recommended ? `${recommended.suit}${recommended.rank}` : null;
       const playedStr = `${card.suit}${card.rank}`;
       playCard(0, card);
-      if(recStr && recStr !== playedStr){
-        el.hintArea.textContent = `Ettertrekk: Anbefalt var ${recStr} for bedre sjanse å nå budet.`;
-      }else if(recStr){
-        el.hintArea.textContent = `Godt valg: ${recStr} var anbefalt.`;
+      if(recStr){
+        const why = explainSuggest(extractPublicState(), me.hand, recommended);
+        el.hintArea.textContent = (recStr !== playedStr)
+          ? `Ettertrekk: ${why}`
+          : `Godt valg: ${why}`;
       }else{
         el.hintArea.textContent = '';
       }
     });
   });
 }
+
+/* ---------- Estimat før bud ---------- */
 
 function estimateTricksForBid(st, p){
   const trump = st.trump;
@@ -418,7 +440,8 @@ function estimateTricksForBid(st, p){
   return Math.min(st.currentRoundCards, Math.max(0, score*0.45));
 }
 
-/*** Scoring + history ***/
+/* ---------- Scoring & history ---------- */
+
 function scoreRoundAndReport(){
   const logs = [];
   const rows = [];
@@ -433,7 +456,6 @@ function scoreRoundAndReport(){
     logs.push(`${style} ${p.name}: bud ${p.bid}, stikk ${p.tricks} → ${pts} poeng`);
   }
 
-  // push til global history
   state.history.push({
     roundNo: state.roundIndex,
     cards: state.currentRoundCards,
@@ -446,28 +468,27 @@ function scoreRoundAndReport(){
   const body = `
     <p><b>Runde ferdig.</b></p>
     <p>${logs.join('<br>')}</p>
-    <p><i>Tips:</i> Justér bud litt mot trumf-lengde og toppkort. Vanskelig-AI forsøker å makse sannsynlighet for å lande på budet, ikke bare vinne enkeltstikk.</p>
+    <p><i>Tips:</i> Vanskelig-AI maksimerer sannsynlighet for å lande på budet, ikke bare vinne enkeltstikk.</p>
   `;
   el.reportBody.innerHTML = body;
   el.roundReport.showModal();
-  el.roundReport.addEventListener('close', ()=>{ startNextRound(); }, {once:true});
+  el.roundReport.addEventListener('close', ()=>{
+    startNextRound();
+  }, {once:true});
 }
 
-/*** Tavle ***/
+/* ---------- Tavle ---------- */
+
 function showHistory(){
   el.historyBody.innerHTML = renderHistoryHTML();
   el.historyDialog.showModal();
 }
 
 function renderHistoryHTML(){
-  if(state.history.length===0){
-    return `<p>Ingen runder spilt enda.</p>`;
-  }
-  // summer
+  if(state.history.length===0){ return `<p>Ingen runder spilt enda.</p>`; }
   const totals = state.players.map(p=>({name:p.name, score:p.score}));
   const totalsLine = totals.map(t=>`${t.name}: <b>${t.score}</b>`).join(' • ');
 
-  // hovedtabell
   const head = `
     <thead>
       <tr>
@@ -497,14 +518,13 @@ function renderHistoryHTML(){
     <div class="tableWrap">
       <table class="historyTable">
         ${head}
-        <tbody>
-          ${rows.join('')}
-        </tbody>
+        <tbody>${rows.join('')}</tbody>
       </table>
     </div>`;
 }
 
-/*** Hjelp – stikklogikk ***/
+/* ---------- Trick rules ---------- */
+
 function compareCards(a, b, leadSuit, trump){
   if(a.suit===b.suit){ return RANK_IDX.get(a.rank)-RANK_IDX.get(b.rank); }
   if(a.suit===trump && b.suit!==trump) return 1;
@@ -520,7 +540,8 @@ function winnerOfTrick(cards, leadSuit, trump){
 }
 function playersInTrickOrder(starter, n){ return Array.from({length:n},(_,i)=>(starter+i)%n); }
 
-/*** PublicState til AI ***/
+/* ---------- Public state to AI ---------- */
+
 function extractPublicState(){
   return {
     players: state.players.map(p=>({
@@ -540,5 +561,5 @@ function extractPublicState(){
   };
 }
 
-/*** Start ***/
+/* ---------- Boot ---------- */
 window.addEventListener('DOMContentLoaded', init);
