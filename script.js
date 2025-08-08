@@ -91,12 +91,31 @@ function init(){
 
 function onInputsChanged(){
   state.playerCount = parseInt(el.playerCount.value,10);
-  const maxStart = Math.floor(52 / state.playerCount);
+  const maxStart = Math.floor(52 / Math.max(2, state.playerCount || 2));
   el.startCards.max = String(maxStart);
   if(parseInt(el.startCards.value,10) > maxStart) el.startCards.value = String(maxStart);
 }
 
-function pickNames(n){ const arr=[...AI_NAMES]; shuffle(arr); return arr.slice(0,n); }
+/* FIX: trekk unike navn uten å shuffle hele lista (robust mot rare length-bugs) */
+function pickNames(n){
+  const pool = AI_NAMES.slice();
+  const out = [];
+  while(out.length < n && pool.length){
+    const idx = (Math.random() * pool.length) | 0;
+    out.push(pool.splice(idx,1)[0]);
+  }
+  while(out.length < n) out.push(`AI ${out.length+1}`);
+  return out;
+}
+
+/* Robust Fisher–Yates – returnerer alltid samme array-ref */
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = (Math.random() * (i+1)) | 0;
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
 
 function newSeries(){
   const n = parseInt(el.playerCount.value,10);
@@ -159,7 +178,6 @@ function startNextRound(){
 }
 
 function makeDeck(){ const d=[]; for(const s of SUITS) for(const r of RANKS) d.push({suit:s, rank:r}); return d; }
-function shuffle(a){ for(let i=a.length-1;i>0;i++){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
 function sortHand(hand){
   return [...hand].sort((a,b)=>{
     const s = SUITS.indexOf(a.suit)-SUITS.indexOf(b.suit);
