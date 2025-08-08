@@ -26,6 +26,7 @@
         </select>
       </label>
       <button id="newGameBtn">Ny spillserie</button>
+      <button id="historyBtn">Vis tavle</button>
     </div>
   </header>
 
@@ -75,12 +76,32 @@
       </form>
     </dialog>
 
+    <dialog id="trickReport">
+      <form method="dialog">
+        <h3>Stikk ferdig</h3>
+        <div id="trickReportBody"></div>
+        <menu>
+          <button value="ok">Neste stikk</button>
+        </menu>
+      </form>
+    </dialog>
+
     <dialog id="roundReport">
       <form method="dialog">
         <h3>Runde-rapport</h3>
         <div id="reportBody"></div>
         <menu>
           <button value="ok">Neste runde</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="historyDialog">
+      <form method="dialog">
+        <h3>Tavle – runde for runde</h3>
+        <div id="historyBody"></div>
+        <menu>
+          <button value="ok">Lukk</button>
         </menu>
       </form>
     </dialog>
