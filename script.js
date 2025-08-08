@@ -96,7 +96,7 @@ function onInputsChanged(){
   if(parseInt(el.startCards.value,10) > maxStart) el.startCards.value = String(maxStart);
 }
 
-/* FIX: trekk unike navn uten å shuffle hele lista (robust mot rare length-bugs) */
+/* Velg n unike navn tilfeldig uten å shuffle hele lista */
 function pickNames(n){
   const pool = AI_NAMES.slice();
   const out = [];
@@ -108,7 +108,7 @@ function pickNames(n){
   return out;
 }
 
-/* Robust Fisher–Yates – returnerer alltid samme array-ref */
+/* Robust Fisher–Yates */
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){
     const j = (Math.random() * (i+1)) | 0;
@@ -238,16 +238,23 @@ function placeBid(playerIndex, value){
       if(adjIdx===0){
         showAdjustDialog(adjIdx);
       }else{
+        // AI må justere (forby forbudt totalsum)
         const p = state.players[adjIdx];
         const est = estimateTricksForBid(state, p);
-        let candidates = [];
-        for(let b=0;b<=state.currentRoundCards;b++){
-          if(b===p.bid) continue;
-          if(totalBid() - p.bid + b === state.currentRoundCards) continue;
-          candidates.push({b, diff: Math.abs(b-est)});
+        const currentTotal = totalBid();
+        const min = 0, max = state.currentRoundCards;
+
+        const candidates = [];
+        for (let b = min; b <= max; b++) {
+          if (b === p.bid) continue; // må endre
+          const newTotal = currentTotal - p.bid + b;
+          if (newTotal === state.currentRoundCards) continue; // forbudt
+          candidates.push({ b, diff: Math.abs(b - est) });
         }
-        candidates.sort((a,b)=>a.diff-b.diff);
-        p.bid = candidates.length? candidates[0].b : Math.max(0, Math.min(state.currentRoundCards, p.bid + 1));
+        candidates.sort((a,b)=>a.diff - b.diff);
+
+        p.bid = candidates.length ? candidates[0].b
+                                  : (p.bid + 1 <= max ? p.bid + 1 : Math.max(min, p.bid - 1));
         afterBidding();
       }
     }else{
@@ -258,21 +265,44 @@ function placeBid(playerIndex, value){
 }
 
 function showAdjustDialog(adjIdx){
-  el.adjustInput.min = 0; el.adjustInput.max = state.currentRoundCards;
-  el.adjustInput.value = state.players[adjIdx].bid;
+  const currentTotal = totalBid();
+  const old = state.players[adjIdx].bid;
+  const min = 0, max = state.currentRoundCards;
+
+  el.adjustInput.min = String(min);
+  el.adjustInput.max = String(max);
+  el.adjustInput.value = String(old);
+
+  // Tekst som peker på riktig spiller
+  el.adjustDialog.querySelector('h3').textContent = 'Sperreregel';
+  el.adjustDialog.querySelector('p').innerHTML =
+    `Summen av bud er <b>${currentTotal}</b> og det er <b>${state.currentRoundCards}</b> kort i runden. ` +
+    `Spilleren til venstre for dealer, <b>${state.players[adjIdx].name}</b>, må justere sitt bud.`;
+
   el.adjustDialog.returnValue = '';
   el.adjustDialog.showModal();
-  el.adjustDialog.addEventListener('close', ()=>{
+
+  const onClose = () => {
+    el.adjustDialog.removeEventListener('close', onClose);
+
     let val = parseInt(el.adjustInput.value,10);
-    if(isNaN(val)) val = state.players[adjIdx].bid;
-    if(val===state.players[adjIdx].bid) val = Math.max(0, Math.min(state.currentRoundCards, val+(val<state.currentRoundCards?1:-1)));
-    if(totalBid() - state.players[adjIdx].bid + val === state.currentRoundCards){
-      val = (val+1<=state.currentRoundCards)? val+1 : Math.max(0, val-2);
+    if (Number.isNaN(val)) val = old;
+
+    // Clamp
+    val = Math.max(min, Math.min(max, val));
+
+    // Forby likhet: Ny total = currentTotal - old + val
+    if ((currentTotal - old + val) === state.currentRoundCards) {
+      if (val + 1 <= max && (currentTotal - old + (val+1)) !== state.currentRoundCards) val = val + 1;
+      else if (val - 1 >= min && (currentTotal - old + (val-1)) !== state.currentRoundCards) val = val - 1;
+      else val = (val === 0) ? 1 : 0; // siste utvei
     }
-    state.players[adjIdx].bid = Math.max(0, Math.min(state.currentRoundCards, val));
+
+    state.players[adjIdx].bid = val;
     renderAll();
     afterBidding();
-  }, {once:true});
+  };
+  el.adjustDialog.addEventListener('close', onClose, { once: true });
 }
 
 function nextUnbid(){ for(let i=0;i<state.playerCount;i++){ if(state.players[i].bid===null) return i; } return null; }
@@ -378,7 +408,9 @@ function playCard(playerIndex, card){
 /* ---------- Render ---------- */
 
 function renderAll(){
-  el.roundInfo.textContent = `Runde ${state.roundIndex}/${state.roundSeq.length} — ${state.currentRoundCards} kort`;
+  const sum = totalBid();
+  el.roundInfo.textContent =
+    `Runde ${state.roundIndex}/${state.roundSeq.length} — ${state.currentRoundCards} kort (sum bud: ${isNaN(sum)?0:sum})`;
   const trumpRed = (state.trump==='♥'||state.trump==='♦') ? 'trumpBadge trumpRed' : 'trumpBadge';
   el.trumpInfo.innerHTML = `Trumf: <span class="${trumpRed}">${state.trump}</span>`;
   el.dealerInfo.textContent = `Dealer: ${state.players[state.dealer].name}`;
@@ -577,6 +609,14 @@ function extractPublicState(){
     discarded: state.discarded.slice(),
     difficulty: state.difficulty,
   };
+}
+
+/* ---------- Series-slutt ---------- */
+function showFinal(){
+  const totals = state.players.map(p=>`${p.name}: ${p.score}`).join(' • ');
+  el.reportBody.innerHTML = `<p><b>Spillserien er ferdig!</b></p><p>${totals}</p>`;
+  el.roundReport.showModal();
+  el.roundReport.addEventListener('close', ()=>newSeries(), {once:true});
 }
 
 /* ---------- Boot ---------- */
