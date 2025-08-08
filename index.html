@@ -1,43 +1,97 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bondebridge</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bondebridge (ruuroo)</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
+  <header>
     <h1>Bondebridge</h1>
-
-    <div id="startMenu">
-      <label for="difficulty">Vanskelighetsgrad:</label>
-      <select id="difficulty">
-        <option value="easy">Lett</option>
-        <option value="medium" selected>Middels</option>
-        <option value="hard">Vanskelig</option>
-      </select>
-
-      <label for="numPlayers">Antall spillere:</label>
-      <input type="number" id="numPlayers" min="2" max="6" value="4"/>
-
-      <label for="startCards">Startkort per spiller:</label>
-      <input type="number" id="startCards" min="1" max="10" value="5"/>
-
-      <button id="startGameBtn">Start spill</button>
+    <div class="controls">
+      <label>Antall spillere:
+        <select id="playerCount">
+          <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+        </select>
+      </label>
+      <label>Startkort:
+        <input id="startCards" type="number" min="1" value="5">
+      </label>
+      <label>Vanskelighetsgrad:
+        <select id="difficulty">
+          <option value="easy">Lett</option>
+          <option value="medium" selected>Middels</option>
+          <option value="hard">Vanskelig</option>
+        </select>
+      </label>
+      <button id="newGameBtn">Ny spillserie</button>
     </div>
+  </header>
 
-    <div id="gameArea" style="display:none;">
-      <div id="dealerInfo"></div>
+  <main id="game">
+    <section id="statusBar">
+      <div id="roundInfo"></div>
       <div id="trumpInfo"></div>
-      <div id="handContainer"></div>
-      <div id="bidSection"></div>
-      <div id="playInfo"></div>
-      <div id="playedCards"></div>
-      <div id="analysisSection"></div>
-    </div>
-  </div>
+      <div id="dealerInfo"></div>
+      <div id="starterInfo"></div>
+    </section>
 
-  <script type="module" src="script.js"></script>
+    <section id="table">
+      <div id="bidsPanel"></div>
+      <div id="trickArea">
+        <h3>Nåværende stikk</h3>
+        <div id="trickCards"></div>
+        <div id="trickWinner"></div>
+      </div>
+      <div id="scoresPanel"></div>
+    </section>
+
+    <section id="humanPanel">
+      <h3>Din hånd</h3>
+      <div id="hand"></div>
+      <div id="bidControls" class="hidden">
+        <label>Ditt bud:
+          <input id="humanBid" type="number" min="0" value="0">
+        </label>
+        <button id="placeBidBtn">Meld</button>
+      </div>
+      <div id="playControls" class="hidden">
+        <button id="hintBtn">Hint (anbefalt kort)</button>
+      </div>
+      <div id="hintArea"></div>
+    </section>
+
+    <dialog id="adjustDialog">
+      <form method="dialog">
+        <h3>Sperreregel</h3>
+        <p>Summen av bud ble lik antall kort. Spilleren til venstre for dealer må justere.</p>
+        <label>Justert bud:
+          <input id="adjustInput" type="number" min="0">
+        </label>
+        <menu>
+          <button value="ok">OK</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="roundReport">
+      <form method="dialog">
+        <h3>Runde-rapport</h3>
+        <div id="reportBody"></div>
+        <menu>
+          <button value="ok">Neste runde</button>
+        </menu>
+      </form>
+    </dialog>
+
+  </main>
+
+  <footer>
+    <small>© ruuroo · Bondebridge med husregler</small>
+  </footer>
+
+  <script src="ai.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
