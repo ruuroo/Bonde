@@ -1,7 +1,8 @@
 /* AI og analyse – suggest_play(state, hand) -> card
+   Forklaringsdata returneres via explainSuggest(state, hand, card)
    Vanskelighetsgrader:
-   - easy: lavt gyldig kort, enkel "ta når må"
-   - medium: treffe bud: laveste vinnende hvis trenger stikk, ellers dump
+   - easy: lavt gyldig kort / enkel "må ta"
+   - medium: prøver å treffe bud: laveste vinnende hvis trenger stikk, ellers dump
    - hard: Monte-Carlo-ish fordeling for å makse P(slutt_stikk == bud)
 */
 
@@ -46,6 +47,7 @@ function winnerOfTrick(cards, leadSuit, trump){
   return cards[bestIdx].playerIndex;
 }
 
+/* ——— EASY ——— */
 function easyAI(state, me){
   const need = me.bid - me.tricks;
   const hand = sortHandForDisplay(me.hand);
@@ -61,6 +63,7 @@ function easyAI(state, me){
   }
 }
 
+/* ——— MEDIUM ——— */
 function mediumAI(state, me){
   const hand = sortHandForDisplay(me.hand);
   const legals = legalCards(state, hand);
@@ -74,10 +77,8 @@ function mediumAI(state, me){
     const w = winnerOfTrick(temp, lead ?? card.suit, trump);
     return w===me.index;
   }
-  const winning = legals.filter(winsIfPlayed)
-                        .sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
-  const losing = legals.filter(c=>!winsIfPlayed(c))
-                       .sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
+  const winning = legals.filter(winsIfPlayed).sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
+  const losing  = legals.filter(c=>!winsIfPlayed(c)).sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
   if(need>0){
     if(winning.length) return winning[0];
     return [...legals].sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank)).at(-1);
@@ -88,7 +89,7 @@ function mediumAI(state, me){
   }
 }
 
-/* Hard AI: enkel Monte-Carlo tilpasning */
+/* ——— HARD ——— (Monte-Carlo-ish) */
 function hardAI(state, me){
   const hand = sortHandForDisplay(me.hand);
   const legals = legalCards(state, hand);
@@ -117,7 +118,6 @@ function hardAI(state, me){
       const trick = state.currentTrick.map(x=>({playerIndex:x.playerIndex, card:x.card}));
       const lead = leadSuit ?? card.suit;
       trick.push({playerIndex: me.index, card});
-
       for(const p of yetToPlay){
         const oppHand = hands.get(p);
         const oppLegals = legalGivenLead(oppHand, lead);
@@ -163,7 +163,7 @@ function heurOppPlay(legals, lead, trump){
   return [...legals].sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank))[0];
 }
 
-/*** Exponert API ***/
+/*** Eksponert ***/
 const AI_IMPL = { easy: easyAI, medium: mediumAI, hard: hardAI };
 function suggest_play(state, hand){
   const me = state.players[state.turn];
@@ -171,7 +171,53 @@ function suggest_play(state, hand){
   return impl(state, me);
 }
 
-/*** Hjelpefunksjoner som deles med script.js ***/
+/* Forklaring av hint: returnerer tekstlig begrunnelse og (for hard) estimert p(vinne stikk) */
+function explainSuggest(state, hand, card){
+  const lead = state.currentTrick.length ? state.leadSuit : card.suit;
+  const legal = legalCards(state, hand);
+  const mustFollow = hand.some(c=>c.suit===lead);
+  const reasons = [];
+  if(mustFollow) reasons.push(`må følge ${lead}`);
+  if(card.suit===state.trump && lead!==state.trump) reasons.push(`trumfer over`);
+  // enkel heuristikk
+  if(state.difficulty==='hard'){
+    // grov mini-sim for forklaring
+    const me = state.players[state.turn];
+    let sims=120, wins=0;
+    for(let s=0;s<sims;s++){
+      const all = makeDeck();
+      const seen = new Set([
+        ...state.discarded.map(cardKey),
+        ...state.currentTrick.map(x=>cardKey(x.card)),
+        ...hand.map(cardKey),
+      ]);
+      const unknown = all.filter(c=>!seen.has(cardKey(c)));
+      const hands = randomDealForOthers(state, me.index, unknown);
+      const trick = state.currentTrick.map(x=>({playerIndex:x.playerIndex, card:x.card}));
+      trick.push({playerIndex: me.index, card});
+      const order = playersInTrickOrder(state.startingPlayer, state.players.length);
+      for(const p of order){
+        if(p===me.index) continue;
+        if(trick.find(x=>x.playerIndex===p)) continue;
+        const oppHand = hands.get(p);
+        const oppLegals = legalGivenLead(oppHand, lead);
+        const oppCard = heurOppPlay(oppLegals, lead, state.trump);
+        oppHand.splice(oppHand.findIndex(c=>cardKey(c)===cardKey(oppCard)),1);
+        trick.push({playerIndex:p, card:oppCard});
+      }
+      const w = winnerOfTrick(trick, lead, state.trump);
+      if(w===me.index) wins++;
+    }
+    const p = Math.round((wins/sims)*100);
+    reasons.push(`forventet vinnersjanse ~${p}%`);
+  }else{
+    // medium: enkel vurdering
+    reasons.push(`balanse mellom å treffe bud og spare høyder`);
+  }
+  return `Anbefaler ${card.suit}${card.rank} fordi ${reasons.join(', ')}.`;
+}
+
+/*** Delt hjelpefunksjoner (brukes også av script.js) ***/
 function makeDeck(){
   const suits = ['♠','♥','♦','♣'];
   const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
@@ -181,7 +227,7 @@ function playersInTrickOrder(starter, n){ return Array.from({length:n},(_,i)=>(s
 function randomDealForOthers(state, meIndex, unknownCards){
   const hands = new Map(); const copy = [...unknownCards]; shuffle(copy);
   for(const p of state.players){
-    if(p.index===meIndex){ continue; }
+    if(p.index===meIndex) continue;
     const need = p.handSize - p.hand.length;
     hands.set(p.index, [...p.hand]);
     while(hands.get(p.index).length < p.handSize && copy.length){
