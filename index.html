@@ -11,7 +11,7 @@
     <header class="topbar">
       <div>
         <h1>Bondebridge-trener</h1>
-        <p class="subtitle">Analyser tilfeldige hender og øv på budvurdering</p>
+        <p class="subtitle">Spill mot bots, vurder bud og tren på stikkspill</p>
       </div>
     </header>
 
@@ -23,7 +23,6 @@
           <label class="field">
             <span>Antall spillere</span>
             <select id="playerCount">
-              <option value="2">2</option>
               <option value="3">3</option>
               <option value="4" selected>4</option>
               <option value="5">5</option>
@@ -49,7 +48,7 @@
           </label>
 
           <label class="field">
-            <span>Starter stikket</span>
+            <span>Hvem starter</span>
             <select id="leaderSeat">
               <option value="0" selected>Spiller 1</option>
               <option value="1">Spiller 2</option>
@@ -62,8 +61,9 @@
         </div>
 
         <div class="button-row">
-          <button id="dealButton" class="primary">Trekk ny hånd</button>
+          <button id="startRoundButton" class="primary">Start runde</button>
           <button id="analyzeButton">Analyser hånd</button>
+          <button id="nextRoundButton" hidden>Neste runde</button>
         </div>
       </section>
 
@@ -71,26 +71,45 @@
         <h2>Status</h2>
         <div class="status-grid">
           <div class="status-box">
+            <div class="label">Fase</div>
+            <div id="phaseDisplay" class="value">Oppsett</div>
+          </div>
+
+          <div class="status-box">
             <div class="label">Trumf</div>
             <div id="trumpDisplay" class="value">—</div>
           </div>
 
           <div class="status-box">
-            <div class="label">Din posisjon</div>
-            <div id="seatDisplay" class="value">Spiller 1</div>
+            <div class="label">Tur</div>
+            <div id="turnDisplay" class="value">—</div>
           </div>
+        </div>
+      </section>
 
-          <div class="status-box">
-            <div class="label">Startspiller</div>
-            <div id="leaderDisplay" class="value">Spiller 1</div>
-          </div>
+      <section class="panel">
+        <h2>Poengsum</h2>
+        <div id="scoreboardContainer"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Budrunde</h2>
+        <div id="biddingContainer">
+          <div class="empty-state">Start en runde for å melde bud.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Bordet</h2>
+        <div id="tableContainer">
+          <div class="empty-state">Ingen kort på bordet ennå.</div>
         </div>
       </section>
 
       <section class="panel hand-panel">
         <h2>Din hånd</h2>
         <div id="handContainer" class="hand">
-          <div class="empty-state">Trykk på “Trekk ny hånd” for å starte</div>
+          <div class="empty-state">Start en runde for å få kort.</div>
         </div>
       </section>
 
@@ -123,8 +142,15 @@
         </div>
       </section>
 
+      <section class="panel">
+        <h2>Rundeoppsummering</h2>
+        <div id="roundSummaryContainer">
+          <div class="empty-state">Vises når runden er ferdig.</div>
+        </div>
+      </section>
+
       <section class="panel debug-panel">
-        <h2>Debug / scenario</h2>
+        <h2>Debug</h2>
         <pre id="debugOutput">Ingen data ennå.</pre>
       </section>
     </main>
