@@ -1,123 +1,136 @@
-<!-- 08.08.25 -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bondebridge (ruuroo)</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bondebridge-trener</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Bondebridge</h1>
-    <div class="controls">
-      <label>Antall spillere:
-        <select id="playerCount">
-          <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
-        </select>
-      </label>
-      <label>Startkort:
-        <input id="startCards" type="number" min="1" value="5">
-      </label>
-      <label>Vanskelighetsgrad:
-        <select id="difficulty">
-          <option value="easy">Lett</option>
-          <option value="medium" selected>Middels</option>
-          <option value="hard">Vanskelig</option>
-        </select>
-      </label>
-      <button id="newGameBtn">Ny spillserie</button>
-      <button id="historyBtn">Vis tavle</button>
-    </div>
-  </header>
-
-  <main id="game">
-    <section id="statusBar">
-      <div id="trumpInfo"></div>
-      <div id="roundInfo"></div>
-      <div id="dealerInfo"></div>
-      <div id="starterInfo"></div>
-    </section>
-
-    <section id="table">
-      <div id="bidsPanel"></div>
-      <div id="trickArea">
-        <h3>Nåværende stikk</h3>
-        <div id="trickCards"></div>
-        <div id="trickWinner"></div>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>Bondebridge-trener</h1>
+        <p class="subtitle">Analyser tilfeldige hender og øv på budvurdering</p>
       </div>
-      <div id="scoresPanel"></div>
-    </section>
+    </header>
 
-    <section id="humanPanel">
-      <h3>Din hånd</h3>
-      <div id="hand"></div>
-      <div id="bidControls" class="hidden">
-        <label>Ditt bud:
-          <input id="humanBid" type="number" min="0" value="0">
-        </label>
-        <button id="placeBidBtn">Meld</button>
-      </div>
-      <div id="playControls" class="hidden playControlsRow">
-        <button id="hintBtn">Hint</button>
-        <label class="slowToggle"><input type="checkbox" id="slowMode" checked> Sakte modus</label>
-      </div>
-      <div id="hintArea"></div>
-    </section>
+    <main class="layout">
+      <section class="panel controls">
+        <h2>Oppsett</h2>
 
-    <!-- Sperreregel -->
-    <dialog id="adjustDialog">
-      <form method="dialog">
-        <h3>Sperreregel</h3>
-        <p>Summen av bud ble lik antall kort. Spilleren til venstre for dealer må justere.</p>
-        <label>Justert bud:
-          <input id="adjustInput" type="number" min="0">
-        </label>
-        <menu>
-          <button value="ok">OK</button>
-        </menu>
-      </form>
-    </dialog>
+        <div class="form-grid">
+          <label class="field">
+            <span>Antall spillere</span>
+            <select id="playerCount">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </label>
 
-    <!-- Etter stikk: du klikker videre -->
-    <dialog id="trickReport">
-      <form method="dialog">
-        <h3>Stikk ferdig</h3>
-        <div id="trickReportBody"></div>
-        <menu>
-          <button value="ok">Neste stikk</button>
-        </menu>
-      </form>
-    </dialog>
+          <label class="field">
+            <span>Antall kort</span>
+            <input id="cardsPerPlayer" type="number" min="1" max="17" value="5" />
+          </label>
 
-    <!-- Etter runde -->
-    <dialog id="roundReport">
-      <form method="dialog">
-        <h3>Runde-rapport</h3>
-        <div id="reportBody"></div>
-        <menu>
-          <button value="ok">Neste runde</button>
-        </menu>
-      </form>
-    </dialog>
+          <label class="field">
+            <span>Din posisjon</span>
+            <select id="mySeat">
+              <option value="0" selected>Spiller 1</option>
+              <option value="1">Spiller 2</option>
+              <option value="2">Spiller 3</option>
+              <option value="3">Spiller 4</option>
+              <option value="4">Spiller 5</option>
+              <option value="5">Spiller 6</option>
+            </select>
+          </label>
 
-    <!-- Tavle -->
-    <dialog id="historyDialog">
-      <form method="dialog">
-        <h3>Tavle – runde for runde</h3>
-        <div id="historyBody"></div>
-        <menu>
-          <button value="ok">Lukk</button>
-        </menu>
-      </form>
-    </dialog>
+          <label class="field">
+            <span>Starter stikket</span>
+            <select id="leaderSeat">
+              <option value="0" selected>Spiller 1</option>
+              <option value="1">Spiller 2</option>
+              <option value="2">Spiller 3</option>
+              <option value="3">Spiller 4</option>
+              <option value="4">Spiller 5</option>
+              <option value="5">Spiller 6</option>
+            </select>
+          </label>
+        </div>
 
-  </main>
+        <div class="button-row">
+          <button id="dealButton" class="primary">Trekk ny hånd</button>
+          <button id="analyzeButton">Analyser hånd</button>
+        </div>
+      </section>
 
-  <footer>
-    <small>© ruuroo · Bondebridge med husregler</small>
-  </footer>
+      <section class="panel status">
+        <h2>Status</h2>
+        <div class="status-grid">
+          <div class="status-box">
+            <div class="label">Trumf</div>
+            <div id="trumpDisplay" class="value">—</div>
+          </div>
 
+          <div class="status-box">
+            <div class="label">Din posisjon</div>
+            <div id="seatDisplay" class="value">Spiller 1</div>
+          </div>
+
+          <div class="status-box">
+            <div class="label">Startspiller</div>
+            <div id="leaderDisplay" class="value">Spiller 1</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel hand-panel">
+        <h2>Din hånd</h2>
+        <div id="handContainer" class="hand">
+          <div class="empty-state">Trykk på “Trekk ny hånd” for å starte</div>
+        </div>
+      </section>
+
+      <section class="panel analysis-panel">
+        <h2>Analyse</h2>
+        <div id="analysisContainer" class="analysis">
+          <div class="analysis-item">
+            <span>Forventede stikk</span>
+            <strong id="expectedTricks">—</strong>
+          </div>
+          <div class="analysis-item">
+            <span>Anbefalt bud</span>
+            <strong id="recommendedBid">—</strong>
+          </div>
+          <div class="analysis-item">
+            <span>Håndstyrke</span>
+            <strong id="handStrength">—</strong>
+          </div>
+          <div class="analysis-item full">
+            <span>Kommentar</span>
+            <strong id="analysisComment">Ingen analyse kjørt ennå.</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel distribution-panel">
+        <h2>Sannsynlighetsfordeling</h2>
+        <div id="distributionContainer" class="distribution">
+          <div class="empty-state">Fordeling vises her etter analyse.</div>
+        </div>
+      </section>
+
+      <section class="panel debug-panel">
+        <h2>Debug / scenario</h2>
+        <pre id="debugOutput">Ingen data ennå.</pre>
+      </section>
+    </main>
+  </div>
+
+  <script src="engine.js"></script>
   <script src="ai.js"></script>
   <script src="script.js"></script>
 </body>
