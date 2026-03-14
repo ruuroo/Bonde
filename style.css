@@ -391,3 +391,15 @@ pre {
     gap: 10px;
   }
 }
+
+
+#scoreboardContainer,
+#biddingContainer,
+#tableContainer,
+#roundSummaryContainer {
+  min-height: 80px;
+}
+
+button[hidden] {
+  display: none !important;
+}
