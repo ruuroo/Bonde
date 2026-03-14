@@ -1,239 +1,389 @@
-/* AI og analyse – suggest_play(state, hand) -> card
-   Forklaringsdata returneres via explainSuggest(state, hand, card)
-   Vanskelighetsgrader:
-   - easy: lavt gyldig kort / enkel "må ta"
-   - medium: prøver å treffe bud: laveste vinnende hvis trenger stikk, ellers dump
-   - hard: Monte-Carlo-ish fordeling for å makse P(slutt_stikk == bud)
-*/
+// ai.js
 
-function cardKey(c){ return `${c.suit}${c.rank}`; }
+(function () {
+  "use strict";
 
-function sortHandForDisplay(hand){
-  const suitOrder = ['♠','♥','♦','♣'];
-  const rankOrder = new Map(['2','3','4','5','6','7','8','9','10','J','Q','K','A'].map((r,i)=>[r, i]));
-  return [...hand].sort((a,b)=>{
-    const s = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-    if(s!==0) return s;
-    return rankOrder.get(a.rank) - rankOrder.get(b.rank);
-  });
-}
+  const {
+    SUITS,
+    cloneCards,
+  } = window.BondeEngine;
 
-function legalCards(state, hand){
-  if(state.currentTrick.length === 0) return [...hand];
-  const lead = state.leadSuit;
-  const hasLead = hand.some(c=>c.suit===lead);
-  return hasLead ? hand.filter(c=>c.suit===lead) : [...hand];
-}
-
-function compareCards(a, b, leadSuit, trump){
-  if(a.suit===b.suit){
-    const order = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-    return order.indexOf(a.rank) - order.indexOf(b.rank);
+  function countBySuit(hand) {
+    const counts = { S: 0, H: 0, D: 0, C: 0 };
+    for (const card of hand) {
+      counts[card.suit] += 1;
+    }
+    return counts;
   }
-  if(a.suit===trump && b.suit!==trump) return 1;
-  if(b.suit===trump && a.suit!==trump) return -1;
-  if(a.suit===leadSuit && b.suit!==leadSuit) return 1;
-  if(b.suit===leadSuit && a.suit!==leadSuit) return -1;
-  return 0;
-}
 
-function winnerOfTrick(cards, leadSuit, trump){
-  let bestIdx = 0;
-  for(let i=1;i<cards.length;i++){
-    const a = cards[bestIdx].card, b = cards[i].card;
-    const cmp = compareCards(a,b,leadSuit,trump);
-    if(cmp<0) bestIdx = i;
+  function getSuitCards(hand, suit) {
+    return hand.filter((card) => card.suit === suit);
   }
-  return cards[bestIdx].playerIndex;
-}
 
-/* ——— EASY ——— */
-function easyAI(state, me){
-  const need = me.bid - me.tricks;
-  const hand = sortHandForDisplay(me.hand);
-  const legals = legalCards(state, hand);
-  if(need>0){
-    const lead = state.leadSuit ?? null;
-    const trump = state.trump;
-    const candidates = [...legals].sort((a,b)=>compareCards(a,b,lead,trump));
-    return candidates[candidates.length-1];
-  }else{
-    const order = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-    return [...legals].sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank))[0];
+  function getSideSuits(trumpSuit) {
+    return SUITS.filter((s) => s !== trumpSuit);
   }
-}
 
-/* ——— MEDIUM ——— */
-function mediumAI(state, me){
-  const hand = sortHandForDisplay(me.hand);
-  const legals = legalCards(state, hand);
-  const need = me.bid - me.tricks;
-  const lead = state.leadSuit ?? null;
-  const trump = state.trump;
-  const order = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-  function winsIfPlayed(card){
-    const temp = state.currentTrick.map(x=>({playerIndex:x.playerIndex, card:x.card}));
-    temp.push({playerIndex: me.index, card});
-    const w = winnerOfTrick(temp, lead ?? card.suit, trump);
-    return w===me.index;
+  function rankPoints(rank, isTrump) {
+    if (isTrump) {
+      if (rank === 14) return 2.4;
+      if (rank === 13) return 1.9;
+      if (rank === 12) return 1.5;
+      if (rank === 11) return 1.2;
+      if (rank === 10) return 0.9;
+      if (rank === 9) return 0.65;
+      if (rank === 8) return 0.45;
+      return 0.2;
+    }
+
+    if (rank === 14) return 1.35;
+    if (rank === 13) return 0.8;
+    if (rank === 12) return 0.45;
+    if (rank === 11) return 0.25;
+    if (rank === 10) return 0.15;
+    return 0.05;
   }
-  const winning = legals.filter(winsIfPlayed).sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
-  const losing  = legals.filter(c=>!winsIfPlayed(c)).sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank));
-  if(need>0){
-    if(winning.length) return winning[0];
-    return [...legals].sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank)).at(-1);
-  }else{
-    if(losing.length) return losing[0];
-    if(winning.length) return winning[0];
-    return legals[0];
+
+  function evaluateTrumpValue(hand, trumpSuit) {
+    const trumpCards = getSuitCards(hand, trumpSuit).sort((a, b) => b.rank - a.rank);
+    let value = 0;
+
+    trumpCards.forEach((card, index) => {
+      value += rankPoints(card.rank, true);
+
+      if (index === 0 && card.rank >= 12) value += 0.35;
+      if (index === 1 && card.rank >= 10) value += 0.2;
+    });
+
+    if (trumpCards.length >= 3) value += 0.4;
+    if (trumpCards.length >= 4) value += 0.5;
+    if (trumpCards.length >= 5) value += 0.6;
+
+    return {
+      count: trumpCards.length,
+      value,
+      cards: trumpCards,
+    };
   }
-}
 
-/* ——— HARD ——— (Monte-Carlo-ish) */
-function hardAI(state, me){
-  const hand = sortHandForDisplay(me.hand);
-  const legals = legalCards(state, hand);
-  const samples = Math.max(200, 60 * state.players.length);
-  const trump = state.trump;
-  const leadSuit = state.currentTrick.length ? state.leadSuit : null;
-  const need = me.bid - me.tricks;
+  function evaluateSideSuitValue(hand, suit) {
+    const cards = getSuitCards(hand, suit).sort((a, b) => b.rank - a.rank);
+    const len = cards.length;
+    let value = 0;
 
-  const allCards = makeDeck();
-  const seen = new Set([
-    ...state.discarded.map(cardKey),
-    ...state.currentTrick.map(x=>cardKey(x.card)),
-    ...me.hand.map(cardKey),
-  ]);
-  const unknown = allCards.filter(c=>!seen.has(cardKey(c)));
+    for (const card of cards) {
+      value += rankPoints(card.rank, false);
+    }
 
-  const already = state.currentTrick.map(x=>x.playerIndex);
-  const turnOrder = playersInTrickOrder(state.startingPlayer, state.players.length);
-  const yetToPlay = turnOrder.filter(p=>!already.includes(p) && p!==me.index);
+    if (len >= 2 && cards[0] && cards[0].rank === 14) {
+      value += 0.25;
+    }
 
-  const tally = new Map(legals.map(c=>[cardKey(c), {winNow:0, ev:0, sims:0, keepFlex: flexibilityScore(hand, c, trump)}]));
+    if (len >= 3 && cards[0] && cards[0].rank >= 13) {
+      value += 0.2;
+    }
 
-  for(let s=0;s<samples;s++){
-    const hands = randomDealForOthers(state, me.index, unknown);
-    for(const card of legals){
-      const trick = state.currentTrick.map(x=>({playerIndex:x.playerIndex, card:x.card}));
-      const lead = leadSuit ?? card.suit;
-      trick.push({playerIndex: me.index, card});
-      for(const p of yetToPlay){
-        const oppHand = hands.get(p);
-        const oppLegals = legalGivenLead(oppHand, lead);
-        const oppCard = heurOppPlay(oppLegals, lead, trump);
-        const idx = oppHand.findIndex(c=>cardKey(c)===cardKey(oppCard));
-        oppHand.splice(idx,1);
-        trick.push({playerIndex:p, card:oppCard});
+    if (len === 1 && cards[0] && cards[0].rank <= 10) {
+      value -= 0.15;
+    }
+
+    return {
+      suit,
+      length: len,
+      value,
+      cards,
+    };
+  }
+
+  function evaluateVoidPotential(hand, trumpSuit) {
+    const counts = countBySuit(hand);
+    const sideSuits = getSideSuits(trumpSuit);
+
+    let bonus = 0;
+
+    for (const suit of sideSuits) {
+      if (counts[suit] === 0) {
+        bonus += 0.5;
+      } else if (counts[suit] === 1) {
+        bonus += 0.22;
       }
-      const w = winnerOfTrick(trick, lead, trump);
-      const willWin = (w===me.index);
-      const evNow = (need>0 ? (willWin?1:-0.5) : (willWin?-0.7:1));
-      const t = tally.get(cardKey(card));
-      t.winNow += willWin ? 1 : 0;
-      t.ev += evNow;
-      t.sims += 1;
     }
+
+    return bonus;
   }
 
-  let best = null, bestScore = -1e9;
-  for(const card of legals){
-    const t = tally.get(cardKey(card));
-    const meanEV = t.ev / Math.max(1,t.sims);
-    const bonusFlex = 0.01 * t.keepFlex;
-    const score = meanEV + bonusFlex;
-    if(score>bestScore){ bestScore=score; best=card; }
+  function evaluateDistributionValue(hand, trumpSuit) {
+    const counts = countBySuit(hand);
+    const sideSuits = getSideSuits(trumpSuit);
+    const lengths = sideSuits.map((s) => counts[s]).sort((a, b) => a - b);
+
+    let bonus = 0;
+
+    if (lengths[0] === 0) bonus += 0.25;
+    if (lengths[0] <= 1) bonus += 0.15;
+    if (lengths[lengths.length - 1] >= 3) bonus += 0.12;
+    if (lengths[lengths.length - 1] >= 4) bonus += 0.18;
+
+    return bonus;
   }
-  return best ?? mediumAI(state, me);
-}
 
-function flexibilityScore(hand, playCard, trump){
-  const remaining = hand.filter(c=>cardKey(c)!==cardKey(playCard));
-  let trumps = remaining.filter(c=>c.suit===trump).length;
-  let aces = remaining.filter(c=>c.rank==='A').length;
-  return 2*trumps + aces;
-}
+  function evaluateLosers(hand, trumpSuit) {
+    let losers = 0;
 
-function legalGivenLead(hand, lead){
-  const hasLead = hand.some(c=>c.suit===lead);
-  return hasLead ? hand.filter(c=>c.suit===lead) : hand;
-}
-function heurOppPlay(legals, lead, trump){
-  const order = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-  return [...legals].sort((a,b)=>order.indexOf(a.rank)-order.indexOf(b.rank))[0];
-}
+    for (const card of hand) {
+      const isTrump = card.suit === trumpSuit;
 
-/*** Eksponert ***/
-const AI_IMPL = { easy: easyAI, medium: mediumAI, hard: hardAI };
-function suggest_play(state, hand){
-  const me = state.players[state.turn];
-  const impl = AI_IMPL[state.difficulty] ?? mediumAI;
-  return impl(state, me);
-}
-
-/* Forklaring av hint: returnerer tekstlig begrunnelse og (for hard) estimert p(vinne stikk) */
-function explainSuggest(state, hand, card){
-  const lead = state.currentTrick.length ? state.leadSuit : card.suit;
-  const legal = legalCards(state, hand);
-  const mustFollow = hand.some(c=>c.suit===lead);
-  const reasons = [];
-  if(mustFollow) reasons.push(`må følge ${lead}`);
-  if(card.suit===state.trump && lead!==state.trump) reasons.push(`trumfer over`);
-  // enkel heuristikk
-  if(state.difficulty==='hard'){
-    // grov mini-sim for forklaring
-    const me = state.players[state.turn];
-    let sims=120, wins=0;
-    for(let s=0;s<sims;s++){
-      const all = makeDeck();
-      const seen = new Set([
-        ...state.discarded.map(cardKey),
-        ...state.currentTrick.map(x=>cardKey(x.card)),
-        ...hand.map(cardKey),
-      ]);
-      const unknown = all.filter(c=>!seen.has(cardKey(c)));
-      const hands = randomDealForOthers(state, me.index, unknown);
-      const trick = state.currentTrick.map(x=>({playerIndex:x.playerIndex, card:x.card}));
-      trick.push({playerIndex: me.index, card});
-      const order = playersInTrickOrder(state.startingPlayer, state.players.length);
-      for(const p of order){
-        if(p===me.index) continue;
-        if(trick.find(x=>x.playerIndex===p)) continue;
-        const oppHand = hands.get(p);
-        const oppLegals = legalGivenLead(oppHand, lead);
-        const oppCard = heurOppPlay(oppLegals, lead, state.trump);
-        oppHand.splice(oppHand.findIndex(c=>cardKey(c)===cardKey(oppCard)),1);
-        trick.push({playerIndex:p, card:oppCard});
+      if (isTrump) {
+        if (card.rank <= 6) losers += 0.22;
+        else if (card.rank <= 9) losers += 0.1;
+      } else {
+        if (card.rank <= 9) losers += 0.18;
+        else if (card.rank <= 11) losers += 0.08;
       }
-      const w = winnerOfTrick(trick, lead, state.trump);
-      if(w===me.index) wins++;
     }
-    const p = Math.round((wins/sims)*100);
-    reasons.push(`forventet vinnersjanse ~${p}%`);
-  }else{
-    // medium: enkel vurdering
-    reasons.push(`balanse mellom å treffe bud og spare høyder`);
-  }
-  return `Anbefaler ${card.suit}${card.rank} fordi ${reasons.join(', ')}.`;
-}
 
-/*** Delt hjelpefunksjoner (brukes også av script.js) ***/
-function makeDeck(){
-  const suits = ['♠','♥','♦','♣'];
-  const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-  const d=[]; for(const s of suits) for(const r of ranks) d.push({suit:s, rank:r}); return d;
-}
-function playersInTrickOrder(starter, n){ return Array.from({length:n},(_,i)=>(starter+i)%n); }
-function randomDealForOthers(state, meIndex, unknownCards){
-  const hands = new Map(); const copy = [...unknownCards]; shuffle(copy);
-  for(const p of state.players){
-    if(p.index===meIndex) continue;
-    const need = p.handSize - p.hand.length;
-    hands.set(p.index, [...p.hand]);
-    while(hands.get(p.index).length < p.handSize && copy.length){
-      hands.get(p.index).push(copy.pop());
-    }
+    return losers;
   }
-  return hands;
-}
-function shuffle(a){ for(let i=a.length-1;i>0;i++){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+
+  function computeRawStrength(hand, trumpSuit, playerCount) {
+    const trump = evaluateTrumpValue(hand, trumpSuit);
+    const sideSuitValues = getSideSuits(trumpSuit).map((suit) =>
+      evaluateSideSuitValue(hand, suit)
+    );
+
+    const sideValue = sideSuitValues.reduce((sum, item) => sum + item.value, 0);
+    const voidPotential = evaluateVoidPotential(hand, trumpSuit);
+    const distributionBonus = evaluateDistributionValue(hand, trumpSuit);
+    const losersPenalty = evaluateLosers(hand, trumpSuit);
+
+    let raw =
+      trump.value +
+      sideValue +
+      voidPotential +
+      distributionBonus -
+      losersPenalty;
+
+    if (playerCount === 2) raw *= 1.08;
+    if (playerCount >= 5) raw *= 0.94;
+    if (playerCount >= 6) raw *= 0.9;
+
+    return {
+      raw,
+      trump,
+      sideSuitValues,
+      voidPotential,
+      distributionBonus,
+      losersPenalty,
+    };
+  }
+
+  function estimateExpectedTricks(rawStrength, cardsPerPlayer, playerCount) {
+    let expected = rawStrength / 2.05;
+
+    if (playerCount === 2) expected *= 1.08;
+    if (playerCount === 3) expected *= 1.03;
+    if (playerCount >= 5) expected *= 0.95;
+
+    expected = Math.max(0, expected);
+    expected = Math.min(cardsPerPlayer, expected);
+
+    return expected;
+  }
+
+  function buildDistribution(expectedTricks, cardsPerPlayer, rawStrength) {
+    const distribution = Array(cardsPerPlayer + 1).fill(0);
+
+    let sigma = 0.85;
+
+    if (rawStrength >= 6) sigma = 0.72;
+    else if (rawStrength >= 4) sigma = 0.8;
+    else if (rawStrength <= 1.5) sigma = 0.95;
+
+    let total = 0;
+
+    for (let k = 0; k <= cardsPerPlayer; k++) {
+      const z = (k - expectedTricks) / sigma;
+      const weight = Math.exp(-0.5 * z * z);
+      distribution[k] = weight;
+      total += weight;
+    }
+
+    if (total > 0) {
+      for (let i = 0; i < distribution.length; i++) {
+        distribution[i] /= total;
+      }
+    }
+
+    return distribution;
+  }
+
+  function expectedScoreForBid(bid, distribution) {
+    let expectedScore = 0;
+
+    for (let tricks = 0; tricks < distribution.length; tricks++) {
+      const p = distribution[tricks];
+
+      if (tricks === bid) {
+        if (bid === 0) {
+          expectedScore += p * 5;
+        } else {
+          expectedScore += p * (10 + bid);
+        }
+      } else {
+        const miss = Math.abs(tricks - bid);
+        expectedScore -= p * miss;
+      }
+    }
+
+    return expectedScore;
+  }
+
+  function recommendBidFromDistribution(distribution, cardsPerPlayer) {
+    let bestBid = 0;
+    let bestScore = -Infinity;
+
+    for (let bid = 0; bid <= cardsPerPlayer; bid++) {
+      const score = expectedScoreForBid(bid, distribution);
+      if (score > bestScore) {
+        bestScore = score;
+        bestBid = bid;
+      }
+    }
+
+    return {
+      recommendedBid: bestBid,
+      expectedScore: bestScore,
+    };
+  }
+
+  function describeStrength(rawStrength, expectedTricks, cardsPerPlayer) {
+    const ratio = cardsPerPlayer > 0 ? expectedTricks / cardsPerPlayer : 0;
+
+    if (rawStrength >= 7 || ratio >= 0.68) return "Svært sterk";
+    if (rawStrength >= 5 || ratio >= 0.52) return "Sterk";
+    if (rawStrength >= 3 || ratio >= 0.34) return "Middels";
+    if (rawStrength >= 1.7 || ratio >= 0.18) return "Svak";
+    return "Svært svak";
+  }
+
+  function buildComment(parts) {
+    const {
+      trump,
+      sideSuitValues,
+      voidPotential,
+      distributionBonus,
+      losersPenalty,
+      expectedTricks,
+      recommendedBid,
+    } = parts;
+
+    const comments = [];
+
+    if (trump.count >= 4) {
+      comments.push("Du har mye trumf, som trekker hånda tydelig opp.");
+    } else if (trump.count === 3) {
+      comments.push("Du har grei trumfdekning.");
+    } else if (trump.count <= 1) {
+      comments.push("Lite trumf gjør hånda mer sårbar.");
+    }
+
+    const strongSide = sideSuitValues
+      .slice()
+      .sort((a, b) => b.value - a.value)[0];
+
+    if (strongSide && strongSide.cards.length > 0 && strongSide.cards[0].rank >= 13) {
+      comments.push(`Du har god sidefarge i ${suitText(strongSide.suit)}.`);
+    }
+
+    if (voidPotential >= 0.5) {
+      comments.push("Kort fordeling i sidefargene kan gi gode stjelingsmuligheter.");
+    } else if (distributionBonus >= 0.25) {
+      comments.push("Fordelingen i hånda er ganske spillbar.");
+    }
+
+    if (losersPenalty >= 1.2) {
+      comments.push("Mange lave kort trekker verdien litt ned.");
+    }
+
+    comments.push(
+      `Modellen anslår omtrent ${expectedTricks.toFixed(1)} stikk og anbefaler bud ${recommendedBid}.`
+    );
+
+    return comments.join(" ");
+  }
+
+  function suitText(suit) {
+    if (suit === "S") return "spar";
+    if (suit === "H") return "hjerter";
+    if (suit === "D") return "ruter";
+    if (suit === "C") return "kløver";
+    return suit;
+  }
+
+  function analyzeHand({
+    hand,
+    trumpSuit,
+    playerCount,
+    cardsPerPlayer,
+  }) {
+    const safeHand = cloneCards(hand);
+
+    const details = computeRawStrength(safeHand, trumpSuit, playerCount);
+    const expectedTricks = estimateExpectedTricks(
+      details.raw,
+      cardsPerPlayer,
+      playerCount
+    );
+
+    const distribution = buildDistribution(
+      expectedTricks,
+      cardsPerPlayer,
+      details.raw
+    );
+
+    const bidResult = recommendBidFromDistribution(
+      distribution,
+      cardsPerPlayer
+    );
+
+    const handStrength = describeStrength(
+      details.raw,
+      expectedTricks,
+      cardsPerPlayer
+    );
+
+    const comment = buildComment({
+      trump: details.trump,
+      sideSuitValues: details.sideSuitValues,
+      voidPotential: details.voidPotential,
+      distributionBonus: details.distributionBonus,
+      losersPenalty: details.losersPenalty,
+      expectedTricks,
+      recommendedBid: bidResult.recommendedBid,
+    });
+
+    return {
+      expectedTricks,
+      recommendedBid: bidResult.recommendedBid,
+      handStrength,
+      distribution,
+      comment,
+      details: {
+        rawStrength: details.raw,
+        trumpCount: details.trump.count,
+        voidPotential: details.voidPotential,
+        distributionBonus: details.distributionBonus,
+        losersPenalty: details.losersPenalty,
+      },
+    };
+  }
+
+  window.BondeAI = {
+    analyzeHand,
+    countBySuit,
+    computeRawStrength,
+    estimateExpectedTricks,
+    buildDistribution,
+    recommendBidFromDistribution,
+  };
+})();
