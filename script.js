@@ -512,9 +512,24 @@
     renderAll();
   }
 
-  function autoBidForBots() {
-    state.players.forEach((player) => {
-      if (player.isHuman) return;
+function fallbackBotBid(player) {
+  const trumpCount = player.hand.filter((c) => c.suit === state.trumpSuit).length;
+  const aces = player.hand.filter((c) => c.rank === 14).length;
+  const kings = player.hand.filter((c) => c.rank === 13).length;
+
+  let estimate = 0;
+  estimate += trumpCount * 0.7;
+  estimate += aces * 0.9;
+  estimate += kings * 0.35;
+
+  return Math.max(0, Math.min(state.cardsPerPlayer, Math.round(estimate / 1.2)));
+}
+
+function autoBidForBots() {
+  state.players.forEach((player) => {
+    if (player.isHuman) return;
+
+    if (AI && typeof AI.analyzeHand === "function") {
       const result = AI.analyzeHand({
         hand: player.hand,
         trumpSuit: state.trumpSuit,
@@ -522,8 +537,11 @@
         cardsPerPlayer: state.cardsPerPlayer,
       });
       player.bid = result.recommendedBid;
-    });
-  }
+    } else {
+      player.bid = fallbackBotBid(player);
+    }
+  });
+}
 
   function submitHumanBid(bid) {
     const human = state.players[state.mySeat];
@@ -534,26 +552,31 @@
     runBotsUntilHuman();
   }
 
-  function analyzeHand() {
-    const human = state.players[state.mySeat];
-    if (!human || human.hand.length === 0) {
-      els.analysisComment.textContent = "Start en runde først.";
-      return;
-    }
-
-    const result = AI.analyzeHand({
-      hand: human.hand,
-      trumpSuit: state.trumpSuit,
-      playerCount: state.playerCount,
-      cardsPerPlayer: state.cardsPerPlayer,
-    });
-
-    els.expectedTricks.textContent = Number(result.expectedTricks).toFixed(2);
-    els.recommendedBid.textContent = String(result.recommendedBid);
-    els.handStrength.textContent = result.handStrength;
-    els.analysisComment.textContent = result.comment || "Analyse fullført.";
-    renderDistribution(result.distribution, state.cardsPerPlayer);
+function analyzeHand() {
+  const human = state.players[state.mySeat];
+  if (!human || human.hand.length === 0) {
+    els.analysisComment.textContent = "Start en runde først.";
+    return;
   }
+
+  if (!(AI && typeof AI.analyzeHand === "function")) {
+    els.analysisComment.textContent = "ai.js er ikke lastet riktig.";
+    return;
+  }
+
+  const result = AI.analyzeHand({
+    hand: human.hand,
+    trumpSuit: state.trumpSuit,
+    playerCount: state.playerCount,
+    cardsPerPlayer: state.cardsPerPlayer,
+  });
+
+  els.expectedTricks.textContent = Number(result.expectedTricks).toFixed(2);
+  els.recommendedBid.textContent = String(result.recommendedBid);
+  els.handStrength.textContent = result.handStrength;
+  els.analysisComment.textContent = result.comment || "Analyse fullført.";
+  renderDistribution(result.distribution, state.cardsPerPlayer);
+}
 
   function chooseBotCard(player) {
     const leadSuit = state.currentTrick.length > 0 ? state.currentTrick[0].card.suit : null;
